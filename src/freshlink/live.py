@@ -64,6 +64,7 @@ class LiveTelemetry:
         self.queues: dict[str, LinkQueue] = {}
         self.changed: dict[str, asyncio.Event] = {}
         self.sender_stats = {name: SenderStats() for name in self.metrics}
+        self.settings: dict | None = None
 
     def start(self) -> None:
         """Start the socket workers and wait until initialization finishes."""
@@ -259,6 +260,7 @@ class LiveTelemetry:
                 "error": self.error,
                 "elapsed_seconds": (now - self.started_ns) / 1e9,
                 "threshold_ms": THRESHOLD_NS / 1e6,
+                "settings": self.settings,
                 **{name: {
                     **metrics.snapshot(now, *self.truth),
                     "position": {"x": metrics.latest.x, "y": metrics.latest.y} if metrics.latest else None,
@@ -306,6 +308,8 @@ class LiveTelemetry:
                 self.queues["tcp"].update_profile(tcp)
                 self.queues["udp"].update_profile(udp)
                 self.queues["tcp"].paused = settings["outage"]
+                with self.lock:
+                    self.settings = dict(settings)
                 self.changed["tcp"].set()
                 self.changed["udp"].set()
                 result.set_result(None)
