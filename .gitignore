@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+*.pcap
+*.pcapng
+tmp/
+results/raw/
+# Local assignment email export contains personal mailbox information.
+CN - Agentic AI Project.pdf
