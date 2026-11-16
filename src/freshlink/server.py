@@ -69,20 +69,25 @@ class DashboardHandler(BaseHTTPRequestHandler):
         host = self.headers.get("Host", "")
         expected = f"127.0.0.1:{self.server.server_port}"
         origin = self.headers.get("Origin")
-        if host != expected or (origin is not None and origin != f"http://{expected}"):
-            self.send_error(HTTPStatus.FORBIDDEN)
-            return
-        if self.headers.get_content_type() != "application/json":
-            self.send_error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
-            return
         length = self.headers.get("Content-Length", "")
-        if not length.isascii() or not length.isdecimal() or not 0 < int(length) <= MAX_CONTROL_BYTES:
+        if (self.headers.get("Transfer-Encoding") is not None
+                or len(self.headers.get_all("Content-Length", [])) != 1
+                or len(length) > len(str(MAX_CONTROL_BYTES))
+                or not length.isascii() or not length.isdecimal()
+                or not 0 < int(length) <= MAX_CONTROL_BYTES):
             self.send_error(HTTPStatus.BAD_REQUEST)
             return
         try:
+            # Drain a bounded body before rejecting it so TCP can deliver the error response.
             body = self.rfile.read(int(length))
             if len(body) != int(length):
                 raise ValueError("incomplete request")
+            if host != expected or (origin is not None and origin != f"http://{expected}"):
+                self.send_error(HTTPStatus.FORBIDDEN)
+                return
+            if self.headers.get_content_type() != "application/json":
+                self.send_error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+                return
             settings = json.loads(body)
             self.server.control(settings)
         except (ValueError, UnicodeDecodeError):

@@ -88,8 +88,32 @@ class LiveTests(unittest.TestCase):
 
     def test_control_endpoint_validates_and_changes_live_relay(self) -> None:
         live = LiveTelemetry()
+        from unittest.mock import patch
+
+        gate = None
+        receive = live._tcp_receive
+
+        async def gated_receive(sock) -> None:
+            nonlocal gate
+            gate = asyncio.Event()
+            await gate.wait()
+            await receive(sock)
+
+        def wait_for(predicate, label: str) -> dict:
+            deadline = time.monotonic() + 3
+            while True:
+                state = live.snapshot()
+                if predicate(state):
+                    return state
+                if state["error"] or time.monotonic() >= deadline:
+                    self.fail(f"{label}: {state!r}")
+                threading.Event().wait(0.01)
+
         server = None
         thread = None
+        receiver_patch = patch.object(live, "_tcp_receive", side_effect=gated_receive)
+        receiver_patch.start()
+        self.addCleanup(receiver_patch.stop)
         try:
             live.start()
             server = DashboardServer(0, live.snapshot, live.control)
@@ -112,24 +136,20 @@ class LiveTests(unittest.TestCase):
             self.assertEqual(post({**HEALTHY, "loss": 2}), 400)
             self.assertEqual(post({**HEALTHY, "loss": True}), 400)
             self.assertEqual(post(HEALTHY, "http://example.com"), 403)
+            wait_for(lambda state: state["tcp"]["relay_released"] > 0 and gate is not None,
+                     "TCP must have released data before outage")
             self.assertEqual(post({**HEALTHY, "outage": True}), 204)
-            # Packets already sent before the control request may still be in flight.
-            threading.Event().wait(0.3)
-            first = live.snapshot()
-            threading.Event().wait(0.4)
-            second = live.snapshot()
-            self.assertEqual(first["tcp"]["accepted"], second["tcp"]["accepted"])
-            self.assertEqual(first["udp"]["accepted"], second["udp"]["accepted"])
+            paused = live.snapshot()
+            self.assertEqual(paused["tcp"]["accepted"], 0, paused)
+            live.loop.call_soon_threadsafe(gate.set)
+            second = wait_for(lambda state: state["tcp"]["accepted"] > 0
+                              and state["udp"]["relay_loss"] >= paused["udp"]["relay_loss"] + 2,
+                              "in-flight TCP should arrive and newly admitted UDP should drop")
+            self.assertEqual(second["tcp"]["relay_released"], paused["tcp"]["relay_released"], second)
             self.assertEqual(post(HEALTHY), 204)
-            deadline = time.monotonic() + 3
-            while time.monotonic() < deadline:
-                result = live.snapshot()
-                if (result["tcp"]["accepted"] > second["tcp"]["accepted"]
-                        and result["udp"]["accepted"] > second["udp"]["accepted"]):
-                    break
-                threading.Event().wait(0.02)
-            else:
-                self.fail(f"telemetry did not recover after outage: {result}")
+            wait_for(lambda state: state["tcp"]["accepted"] > second["tcp"]["accepted"]
+                     and state["udp"]["accepted"] > second["udp"]["accepted"],
+                     "telemetry did not recover")
         finally:
             if server is not None:
                 server.shutdown()

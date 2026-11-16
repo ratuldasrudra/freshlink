@@ -57,6 +57,9 @@ class LinkQueue:
         self._last_eligible = 0.0
         self._next_send = 0.0
         self.paused = False
+        self.released = 0
+        self.lost = 0
+        self.overflow = 0
 
     @property
     def full(self) -> bool:
@@ -76,6 +79,7 @@ class LinkQueue:
         if self.ordered and self.full:
             raise BufferError("TCP input must wait for a free relay slot")
         if not self.ordered and self._random.random() < profile.loss:
+            self.lost += 1
             LOGGER.debug("udp loss input=%d", number)
             return
         eligible = now + max(0.0, profile.delay + self._random.uniform(-profile.jitter, profile.jitter))
@@ -96,8 +100,9 @@ class LinkQueue:
                 copies = 2
                 LOGGER.debug("udp duplicate input=%d", number)
 
-        for _ in range(copies):
+        for index in range(copies):
             if self.full:
+                self.overflow += copies - index
                 LOGGER.debug("udp overflow input=%d", number)
                 break
             self._ordinal += 1
@@ -125,6 +130,7 @@ class LinkQueue:
         if ready is None or now < ready:
             return None
         _, _, number, payload = heapq.heappop(self._pending)
+        self.released += 1
         if self.profile.bytes_per_second:
             self._next_send = now + len(payload) / self.profile.bytes_per_second
         LOGGER.debug("released input=%d depth=%d", number, len(self._pending))

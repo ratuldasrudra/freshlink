@@ -257,11 +257,18 @@ class LiveTelemetry:
                 "truth": {"x": self.truth[0], "y": self.truth[1]},
                 "sequence": self.sequence,
                 "error": self.error,
+                "elapsed_seconds": (now - self.started_ns) / 1e9,
+                "threshold_ms": THRESHOLD_NS / 1e6,
                 **{name: {
                     **metrics.snapshot(now, *self.truth),
+                    "position": {"x": metrics.latest.x, "y": metrics.latest.y} if metrics.latest else None,
+                    "sequence": metrics.latest.sequence if metrics.latest else None,
                     "source_queue_dropped": self.sender_stats[name].dropped,
                     "source_queue_delayed": self.sender_stats[name].delayed,
                     "source_queue_wait_ms": self.sender_stats[name].queue_wait_ms,
+                    "relay_released": self.queues[name].released if name in self.queues else 0,
+                    "relay_loss": self.queues[name].lost if name in self.queues else 0,
+                    "relay_overflow": self.queues[name].overflow if name in self.queues else 0,
                 } for name, metrics in self.metrics.items()},
             }
 
