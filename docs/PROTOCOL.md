@@ -37,3 +37,9 @@ sequenceDiagram
 ```
 
 Generation timestamps use `perf_counter_ns()` on the same host. They are suitable for comparing elapsed time within this lab. Absolute dates and synchronized clocks across hosts are outside this format's scope.
+
+## Relay behavior
+
+The relay terminates one TCP connection and opens another. It validates frame boundaries and forwards each complete frame, prefix included, with its bytes and order preserved. Delay, jitter, queueing, and rate limiting are emulated at the application layer. They do not cause native TCP segment loss or demonstrate a retransmission on either TCP connection. EOF inside a frame and a partial-frame timeout terminate the relay connection.
+
+The UDP relay can suppress, duplicate, delay, or flip a bit in a datagram. The receiver still validates the packet independently. Queue overflow discards incoming UDP copies. TCP instead pauses application intake when its queue fills. See [the relay walkthrough](EXPLAIN-impairment.md) for timing and measurement limits.
