@@ -35,6 +35,7 @@ const colors = {tcp: "#ffc078", udp: "#91e5be"};
 const history = [];
 let lastState;
 let renderedSettings;
+let lastUpdate = null;
 
 for (const [name, title, max, step] of fields) {
   const label = document.createElement("label");
@@ -68,6 +69,9 @@ for (const protocol of ["tcp", "udp"]) {
 function render(state) {
   if (lastState && state.elapsed_seconds < lastState.elapsed_seconds) history.length = 0;
   lastState = state;
+  lastUpdate = Date.now();
+  document.body.classList.remove("disconnected");
+  get("window").textContent = `Counter window · ${state.counter_window_seconds.toFixed(0)} s`;
   for (const protocol of ["tcp", "udp"]) {
     const values = state[protocol];
     get(`${protocol}-age`).textContent = values.age_ms == null ? "—" : values.age_ms.toFixed(0);
@@ -120,7 +124,7 @@ function drawPosition(state) {
   ctx.beginPath();
   ctx.arc(...center, radius, 0, 2 * Math.PI);
   ctx.stroke();
-  ctx.fillText("x (rover units)", 290, 147);
+  ctx.fillText("x (rover units)", 303, 166);
   ctx.fillText("y (rover units)", 231, 23);
   ctx.fillText("−1", 126, 139);
   ctx.fillText("+1", 285, 139);
@@ -143,33 +147,35 @@ function drawPosition(state) {
 function drawAge(state) {
   const ctx = canvas("history");
   const left = 67, right = 550, top = 18, bottom = 213;
-  const highest = Math.max(state.threshold_ms, ...history.flatMap((row) => row.slice(1).filter(Number.isFinite)));
-  const max = Math.ceil(highest / 250) * 250;
-  const y = (age) => bottom - (bottom - top) * age / max;
+  const max = Math.max(state.threshold_ms * 2, 1000);
+  const y = (age) => bottom - (bottom - top) * Math.min(age, max) / max;
   const x = (time) => right - (right - left) * (state.elapsed_seconds - time) / 20;
   ctx.strokeStyle = "#71879a";
   line(ctx, left, top, left, bottom);
   line(ctx, left, bottom, right, bottom);
-  ctx.fillText(`${max} ms`, 5, top + 5);
+  ctx.fillText(`≥${max} ms`, 5, top + 5);
   ctx.fillText("0 ms", 20, bottom);
   ctx.fillText("−20 s", left, 240);
   ctx.fillText("Time (s)", 280, 240);
   ctx.fillText("Now", right - 34, 240);
   ctx.setLineDash([2, 5]);
   line(ctx, left, y(state.threshold_ms), right, y(state.threshold_ms));
+  ctx.fillText(`Stale ${state.threshold_ms} ms`, left + 8, y(state.threshold_ms) - 6);
   for (const [index, protocol] of ["tcp", "udp"].entries()) {
-    ctx.strokeStyle = colors[protocol];
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash(index ? [8, 5] : []);
-    let started = false;
-    ctx.beginPath();
-    for (const row of history) {
-      if (row[index + 1] == null) { started = false; continue; }
-      if (started) ctx.lineTo(x(row[0]), y(row[index + 1]));
-      else ctx.moveTo(x(row[0]), y(row[index + 1]));
-      started = true;
+    for (const [stroke, width] of [["#09121a", 6], [colors[protocol], 2.5]]) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.setLineDash(index ? [8, 5] : []);
+      let started = false;
+      ctx.beginPath();
+      for (const row of history) {
+        if (row[index + 1] == null) { started = false; continue; }
+        if (started) ctx.lineTo(x(row[0]), y(row[index + 1]));
+        else ctx.moveTo(x(row[0]), y(row[index + 1]));
+        started = true;
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
   }
   ctx.setLineDash([]);
   ctx.lineWidth = 1;
@@ -205,7 +211,23 @@ form.addEventListener("submit", (event) => {
   const values = Object.fromEntries(fields.map(([name]) => [name, form.elements[name].valueAsNumber]));
   apply({...values, outage: form.elements.outage.checked}, "Custom");
 });
+get("reset").addEventListener("click", async () => {
+  try {
+    const response = await fetch("/reset", {method:"POST",
+      headers:{"Content-Type":"application/json"}, body:"{}"});
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    get("condition").textContent = "Counters reset";
+  } catch (error) {
+    get("condition").textContent = `Could not reset counters · ${error.message}`;
+  }
+});
 
 const events = new EventSource("/events");
 events.onmessage = (event) => render(JSON.parse(event.data));
-events.onerror = () => { get("connection").textContent = "Disconnected · reconnecting…"; };
+events.onerror = () => { document.body.classList.add("disconnected"); };
+setInterval(() => {
+  if (document.body.classList.contains("disconnected")) {
+    const age = lastUpdate === null ? "no update received" : `last update ${Math.floor((Date.now() - lastUpdate) / 1000)} s ago`;
+    get("connection").textContent = `Disconnected · ${age} · reconnecting`;
+  }
+}, 250);

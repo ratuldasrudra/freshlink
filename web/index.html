@@ -24,6 +24,8 @@
       <button type="button" data-preset="outage">Outage</button>
     </div>
     <p id="condition" role="status">Initial conditions · Healthy</p>
+    <button type="button" id="reset">Reset counters</button>
+    <span id="window">Counter window · 0 s</span>
     <details>
       <summary>Custom impairment</summary>
       <form id="settings">
@@ -44,7 +46,7 @@
       <canvas id="history" width="570" height="260" aria-label="TCP and UDP information age in milliseconds over time">See current information age in the protocol panels.</canvas>
     </article>
   </section>
-  <footer>Age measures time since the latest accepted sample was generated. Stale time starts at first receipt. Latency percentiles use the latest 4,096 accepted updates.</footer>
+  <footer>Counters and stale time cover the window since reset or preset change. Stale time begins when a position is known. Latency percentiles use up to 4,096 accepted updates in that window. Information age and position are current values.</footer>
 </main>
 </body>
 </html>

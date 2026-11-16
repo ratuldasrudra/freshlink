@@ -67,3 +67,10 @@ The old assertion also assumed that the control response formed a receiver deliv
 ## 2026-11-16 · Dashboard page and launcher
 
 The 24-test Windows suite passed with loopback access, and `node --check web/app.js` passed. The Windows launcher opened the page on an ephemeral port. In the browser, UDP loss increased the relay drop count, an outage made both paths stale, and Healthy restored freshness. Reloading during UDP loss restored the selected preset from the server. The initial metric lists pushed the charts down the page, so the detailed rows now expand on demand. Interrupting the launcher ended the preview process, but the terminal reported exit code 1, so a clean CLI exit status remains unverified.
+
+## 2026-11-16 · Dashboard polish
+
+- The owner reviewed screenshots of the running dashboard and requested resettable counters, a readable age chart, restart reconnection, a disconnected indicator, and corrected plot labels.
+- Produced a counter reset, capped chart with a labeled threshold and dashed UDP line, disconnected age and dimming, a demo script, and README updates. The launcher already used port 8000 with a port override.
+- Browser verification on Windows showed preset and manual counter resets, the chart and rover labels, disconnected status after stopping the server, and automatic recovery after restarting it on the same port without reloading.
+- The reset unit and integration tests passed in the Windows standard-library suite. A screenshot of the live dashboard was saved to docs/dashboard.jpg. Clean-clone verification has not been run. Owner review of the polish is pending.

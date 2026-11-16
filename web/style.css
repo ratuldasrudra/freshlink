@@ -29,6 +29,7 @@ input[type="number"] { width:100%; color:inherit; background:#09121a; padding:5p
 .age { font-weight:750; font-size:clamp(1.7rem,4vw,2.55rem); font-variant-numeric:tabular-nums; }
 .age small { font-size:1rem; font-weight:500; }
 .status { font-weight:650; }
+.disconnected .comparison,.disconnected .charts { opacity:.4; }
 .metric-details { margin-top:12px; }
 dl { margin:12px 0 0; display:grid; grid-template-columns:1fr auto; gap:6px 12px; }
 dt,dd { margin:0; }
