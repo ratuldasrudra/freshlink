@@ -2,6 +2,7 @@
 
 import asyncio
 import errno
+import logging
 import math
 import socket
 import threading
@@ -20,6 +21,7 @@ THRESHOLD_NS = 500_000_000
 IO_TIMEOUT = 5.0
 STOP_TIMEOUT = 8.0
 SENDER_QUEUE_SIZE = 16
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -152,6 +154,7 @@ class LiveTelemetry:
                 task.cancel()
             done, pending = await asyncio.wait(tasks, timeout=1) if tasks else (set(), set())
             if pending:
+                LOGGER.warning("Retrying telemetry shutdown for %d pending task(s)", len(pending))
                 # Python 3.11 wait_for can consume cancellation when its inner
                 # operation completes at the same instant. Retry cancellation.
                 for task in pending:
