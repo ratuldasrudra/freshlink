@@ -18,4 +18,4 @@ jobs:
           python-version: '3.11'
       - run: python -m unittest discover -s tests -v
       - run: python -m experiments.run --quick
-      - run: python -m experiments.analyze results/raw/runs.csv --output results/raw/quick-summary
+      - run: python -m experiments.analyze results/raw/runs.csv --quick --output results/raw/quick-summary

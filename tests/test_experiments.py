@@ -28,3 +28,5 @@ class AnalysisTests(unittest.TestCase):
             group_runs(rows[:-1])
         with self.assertRaisesRegex(ValueError, "duplicate"):
             group_runs(rows + rows[:1])
+        with self.assertRaisesRegex(ValueError, "expected repeats"):
+            group_runs(rows, expected_repeats=10)

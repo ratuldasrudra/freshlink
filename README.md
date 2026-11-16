@@ -34,7 +34,7 @@ python -m experiments.run
 python -m experiments.analyze results/raw/runs.csv --output results/raw/analysis
 ```
 
-The first command runs 70 trials in about nine minutes. Use `--quick` for a short smoke run or `--output` for a different CSV path. The runner preserves an existing CSV by requiring a new filename. The analyzer writes summary statistics and an SVG chart. All experiment code uses the standard library.
+The first command runs 70 trials. Use `--quick` with both commands for a short smoke run or `--output` to select a new CSV path for the runner. The analyzer writes summary statistics and two SVG figures. All experiment code uses the standard library. See [the experiment report](docs/REPORT.md) for the conditions and results.
 
 ### Run through the impairment relay
 
