@@ -116,7 +116,7 @@ class LiveTests(unittest.TestCase):
         self.addCleanup(receiver_patch.stop)
         try:
             live.start()
-            server = DashboardServer(0, live.snapshot, live.control)
+            server = DashboardServer(0, live.snapshot, live.control, live.reset)
             thread = threading.Thread(target=server.serve_forever)
             thread.start()
 
@@ -150,6 +150,15 @@ class LiveTests(unittest.TestCase):
             wait_for(lambda state: state["tcp"]["accepted"] > second["tcp"]["accepted"]
                      and state["udp"]["accepted"] > second["udp"]["accepted"],
                      "telemetry did not recover")
+            connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=3)
+            try:
+                connection.request("POST", "/reset", "{}", {"Content-Type": "application/json"})
+                self.assertEqual(connection.getresponse().status, 204)
+            finally:
+                connection.close()
+            reset = live.snapshot()
+            self.assertLess(reset["counter_window_seconds"], 1)
+            self.assertLess(reset["udp"]["relay_loss"], 2)
         finally:
             if server is not None:
                 server.shutdown()

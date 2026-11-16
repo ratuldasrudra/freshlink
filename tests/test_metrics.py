@@ -30,3 +30,12 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual(percentile([5, 1, 3, 2, 4], 0.5), 3)
         self.assertEqual(percentile([5, 1, 3, 2, 4], 0.95), 5)
         self.assertIsNone(percentile([], 0.99))
+
+    def test_reset_preserves_age_and_restarts_observation(self) -> None:
+        metrics = ReceiverMetrics(0, 100)
+        metrics.accept(Sample(0, 0, 0, 0), 50)
+        metrics.reset(200)
+        result = metrics.snapshot(300, 0, 0)
+        self.assertEqual(result["stale_fraction"], 1)
+        self.assertIsNone(result["latency_p95_ms"])
+        self.assertEqual(result["accepted"], 0)

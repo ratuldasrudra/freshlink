@@ -65,6 +65,7 @@ class LiveTelemetry:
         self.changed: dict[str, asyncio.Event] = {}
         self.sender_stats = {name: SenderStats() for name in self.metrics}
         self.settings: dict | None = None
+        self.counters_started_ns = self.started_ns
 
     def start(self) -> None:
         """Start the socket workers and wait until initialization finishes."""
@@ -261,6 +262,7 @@ class LiveTelemetry:
                 "elapsed_seconds": (now - self.started_ns) / 1e9,
                 "threshold_ms": THRESHOLD_NS / 1e6,
                 "settings": self.settings,
+                "counter_window_seconds": (now - self.counters_started_ns) / 1e9,
                 **{name: {
                     **metrics.snapshot(now, *self.truth),
                     "position": {"x": metrics.latest.x, "y": metrics.latest.y} if metrics.latest else None,
@@ -310,8 +312,39 @@ class LiveTelemetry:
                 self.queues["tcp"].paused = settings["outage"]
                 with self.lock:
                     self.settings = dict(settings)
+                    self._reset_locked(time.perf_counter_ns())
                 self.changed["tcp"].set()
                 self.changed["udp"].set()
+                result.set_result(None)
+            except Exception as error:
+                result.set_exception(error)
+
+        loop.call_soon_threadsafe(apply)
+        result.result(timeout=IO_TIMEOUT)
+
+    def _reset_locked(self, now: int) -> None:
+        for metrics in self.metrics.values():
+            metrics.reset(now)
+        for stats in self.sender_stats.values():
+            stats.dropped = stats.delayed = 0
+            stats.queue_wait_ms = None
+        for queue in self.queues.values():
+            queue.lost = queue.overflow = queue.released = 0
+        self.counters_started_ns = now
+
+    def reset(self) -> None:
+        """Reset counters atomically on the telemetry event loop."""
+        from concurrent.futures import Future
+
+        loop = self.loop
+        if loop is None or not loop.is_running():
+            raise RuntimeError("telemetry is not running")
+        result: Future[None] = Future()
+
+        def apply() -> None:
+            try:
+                with self.lock:
+                    self._reset_locked(time.perf_counter_ns())
                 result.set_result(None)
             except Exception as error:
                 result.set_exception(error)

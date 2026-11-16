@@ -24,9 +24,11 @@ class DashboardServer(ThreadingHTTPServer):
     allow_reuse_address = False
 
     def __init__(self, port: int, snapshot: Callable[[], dict],
-                 control: Callable[[dict], None] | None = None) -> None:
+                 control: Callable[[dict], None] | None = None,
+                 reset: Callable[[], None] | None = None) -> None:
         self.snapshot = snapshot
         self.control = control
+        self.reset = reset
         self.clients = threading.BoundedSemaphore(MAX_CLIENTS)
         super().__init__(("127.0.0.1", port), DashboardHandler)
 
@@ -63,7 +65,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         """Validate and apply a loopback-only relay control request."""
-        if self.path != "/control" or self.server.control is None:
+        if self.path not in ("/control", "/reset") or self.server.control is None:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         host = self.headers.get("Host", "")
@@ -89,7 +91,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
                 return
             settings = json.loads(body)
-            self.server.control(settings)
+            if self.path == "/reset":
+                if settings != {} or self.server.reset is None:
+                    raise ValueError("invalid reset request")
+                self.server.reset()
+            else:
+                self.server.control(settings)
         except (ValueError, UnicodeDecodeError):
             self.send_error(HTTPStatus.BAD_REQUEST)
             return
@@ -136,7 +143,7 @@ def main() -> None:
     server = None
     try:
         live.start()
-        server = DashboardServer(args.port, live.snapshot, live.control)
+        server = DashboardServer(args.port, live.snapshot, live.control, live.reset)
         url = f"http://127.0.0.1:{server.server_port}/"
         print(f"FreshLink dashboard at {url}", flush=True)
         if args.open:

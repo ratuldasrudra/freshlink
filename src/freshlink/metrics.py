@@ -60,6 +60,17 @@ class ReceiverMetrics:
         self.accepted += 1
         self.latencies_ms.append((now_ns - sample.generated_ns) / 1_000_000)
 
+    def reset(self, now_ns: int) -> None:
+        """Reset counters while retaining the latest known position and age."""
+        if now_ns < self.last_observed_ns:
+            raise ValueError("monotonic time moved backwards")
+        self.started_ns = now_ns
+        self.last_observed_ns = now_ns
+        self.first_received_ns = now_ns if self.latest is not None else None
+        self.accepted = 0
+        self.stale_ns = 0
+        self.latencies_ms.clear()
+
     def snapshot(self, now_ns: int, truth_x: float, truth_y: float) -> dict[str, float | int | None]:
         """Return current age, stale fraction, latency percentiles, and position error."""
         self.advance(now_ns)
