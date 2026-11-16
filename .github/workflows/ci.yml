@@ -6,6 +6,7 @@ on:
 
 jobs:
   unittest:
+    timeout-minutes: 3
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
