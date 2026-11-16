@@ -3,5 +3,6 @@
 import faulthandler
 import os
 
-if os.environ.get("CI") and faulthandler.is_enabled():
+if os.environ.get("CI"):
+    faulthandler.enable()
     faulthandler.dump_traceback_later(20, repeat=True)
