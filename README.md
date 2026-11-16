@@ -27,6 +27,15 @@ The dashboard's presets apply emulated conditions and reset the counter window. 
 
 ![Live freshness comparison and charts](docs/dashboard.jpg)
 
+Run the headless experiment suite with Python 3.11 or later:
+
+```powershell
+python -m experiments.run
+python -m experiments.analyze results/raw/runs.csv --output results/raw/analysis
+```
+
+The first command runs 70 trials in about nine minutes. Use `--quick` for a short smoke run or `--output` for a different CSV path. The runner preserves an existing CSV by requiring a new filename. The analyzer writes summary statistics and an SVG chart. All experiment code uses the standard library.
+
 ### Run through the impairment relay
 
 From the repository root, run each line in its own terminal, in order. The relay listens on `127.0.0.1:8766` and forwards to the receiver on `127.0.0.1:8765`.
