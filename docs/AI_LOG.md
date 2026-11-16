@@ -22,3 +22,11 @@
 - Produced: PROJECT.md and DECISIONS.md; updated research status. No transport code was written.
 - Mistakes and checks: `gh` is unavailable; the connected GitHub integration independently returned the requested login and numeric ID. Its repository creation capability was not exposed. No author email from the profile was used.
 - Tests: application and network tests not run; no implementation exists.
+
+## 2026-11-16 - Repository setup
+
+- Goal: initialize the private repository, research PR, and cross-platform CI.
+- The owner authorized the GitHub repository and approved installation of GitHub CLI if necessary. The connected account was verified and a repository-local noreply identity set.
+- The initial main commit contains only LICENSE, README.md, .gitignore and AGENTS.md. A content and filename scan preceded the first push; the local email PDF and temporary renders are ignored.
+- Mistake and recovery: `git merge --no-commit --no-ff --allow-unrelated-histories main` failed because identical untracked LICENSE and README.md would be overwritten. An isolated index and a two-parent commit joined the histories without rewriting either existing commit or deleting the files.
+- CI adds a repository-artifact smoke test; it does not claim transport functionality. Owner review of the new CI is pending.
