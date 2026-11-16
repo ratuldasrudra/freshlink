@@ -1,5 +1,6 @@
 """Exercise the live source, socket relays, metrics, and SSE together."""
 
+import asyncio
 import http.client
 import json
 import threading
@@ -14,6 +15,43 @@ HEALTHY = {"delay_ms": 0, "jitter_ms": 0, "bytes_per_second": 0, "loss": 0,
 
 
 class LiveTests(unittest.TestCase):
+    def test_blocked_tcp_sender_preserves_udp_cadence(self) -> None:
+        from unittest.mock import patch
+        from src.freshlink.live import RATE, SENDER_QUEUE_SIZE
+        from src.freshlink.metrics import ReceiverMetrics
+
+        delivered = []
+        blocked = threading.Event()
+        completed = threading.Event()
+        original = ReceiverMetrics.accept
+
+        async def stall(*args) -> None:
+            blocked.set()
+            await asyncio.Future()
+
+        def record(metrics, sample, now_ns) -> None:
+            original(metrics, sample, now_ns)
+            delivered.append((sample.sequence, now_ns))
+            if len(delivered) == SENDER_QUEUE_SIZE * 2:
+                completed.set()
+
+        live = LiveTelemetry()
+        with patch.object(live, "_send_tcp", side_effect=stall), patch.object(ReceiverMetrics, "accept", record):
+            try:
+                live.start()
+                self.assertTrue(blocked.wait(2))
+                self.assertTrue(completed.wait(6), live.snapshot())
+                snapshot = live.snapshot()
+            finally:
+                live.stop()
+        expected = 1 / RATE
+        times = [received for _, received in delivered[:SENDER_QUEUE_SIZE * 2]]
+        self.assertAlmostEqual((times[-1] - times[0]) / (len(times) - 1) / 1e9, expected, delta=0.035)
+        self.assertEqual([sequence for sequence, _ in delivered], list(range(len(delivered))))
+        self.assertGreater(snapshot["tcp"]["source_queue_dropped"], 0)
+        self.assertGreater(snapshot["tcp"]["source_queue_delayed"], 0)
+        self.assertEqual(snapshot["udp"]["source_queue_dropped"], 0)
+
     def test_real_paths_feed_http_events_and_shutdown(self) -> None:
         live = LiveTelemetry()
         server = None

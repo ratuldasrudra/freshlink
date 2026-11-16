@@ -47,3 +47,7 @@
 - Decision — update both relay profiles atomically on their event loop. New delay and fault settings apply to future admissions, while queued items retain their eligibility. An outage pauses TCP releases and drops newly arriving UDP datagrams.
 - Alternatives — discard queued TCP data or reset both connections on each change.
 - Reason — preserving admitted TCP bytes and order supports a continuous freshness demo. The control endpoint uses the existing loopback-only HTTP server and restricts browser origins.
+
+## 2026-11-16 · Independent sender queues
+
+One source offers each immutable snapshot to separate bounded TCP and UDP sender queues without waiting for either socket. A full queue rejects the newest offer on that path. An admitted offer counts as delayed if an older sample is queued or being sent. The latest queue wait measures generation to dequeue. These source counters are separate from emulated relay faults. Keeping admitted TCP samples in FIFO order lets sustained backpressure be visible without changing the shared generation cadence.

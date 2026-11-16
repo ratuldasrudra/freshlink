@@ -6,6 +6,8 @@ import math
 import socket
 import threading
 import time
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
 from .metrics import ReceiverMetrics
 from .protocol import FRAME_LENGTH, MAX_PACKET_BYTES, Sample, decode, encode
@@ -17,6 +19,17 @@ RATE = 10
 THRESHOLD_NS = 500_000_000
 IO_TIMEOUT = 5.0
 STOP_TIMEOUT = 8.0
+SENDER_QUEUE_SIZE = 16
+
+
+@dataclass
+class SenderStats:
+    """Track application queue effects independently of relay effects."""
+
+    dropped: int = 0
+    delayed: int = 0
+    busy: bool = False
+    queue_wait_ms: float | None = None
 
 
 def _bind(kind: int) -> socket.socket:
@@ -50,6 +63,7 @@ class LiveTelemetry:
         self.stopping = threading.Event()
         self.queues: dict[str, LinkQueue] = {}
         self.changed: dict[str, asyncio.Event] = {}
+        self.sender_stats = {name: SenderStats() for name in self.metrics}
 
     def start(self) -> None:
         """Start the socket workers and wait until initialization finishes."""
@@ -106,10 +120,22 @@ class LiveTelemetry:
             receiver, _ = await asyncio.wait_for(self.loop.sock_accept(tcp_target), IO_TIMEOUT)
             sockets.append(receiver)
             receiver.setblocking(False)
+            outgoing = {name: asyncio.Queue(maxsize=SENDER_QUEUE_SIZE) for name in self.metrics}
+
+            async def send_tcp(packet: bytes) -> None:
+                await self._send_tcp(tcp_sender, packet)
+
+            async def send_udp(packet: bytes) -> None:
+                await asyncio.wait_for(
+                    self.loop.sock_sendto(udp_sender, packet, udp_relay.getsockname()), IO_TIMEOUT
+                )
+
             tasks.extend([
                 asyncio.create_task(self._tcp_receive(receiver)),
                 asyncio.create_task(self._udp_receive(udp_target)),
-                asyncio.create_task(self._source(tcp_sender, udp_sender, udp_relay.getsockname())),
+                asyncio.create_task(self._source(outgoing)),
+                asyncio.create_task(self._sender("tcp", outgoing["tcp"], send_tcp)),
+                asyncio.create_task(self._sender("udp", outgoing["udp"], send_udp)),
             ])
             self.ready.set()
             stop_task = asyncio.create_task(self._wait_for_stop())
@@ -131,8 +157,7 @@ class LiveTelemetry:
         while not self.stopping.is_set():
             await asyncio.sleep(0.1)
 
-    async def _source(self, tcp: socket.socket, udp: socket.socket, udp_target: tuple[str, int]) -> None:
-        loop = asyncio.get_running_loop()
+    async def _source(self, outgoing: dict[str, asyncio.Queue[Sample]]) -> None:
         while True:
             now = time.perf_counter_ns()
             elapsed = (now - self.started_ns) / 1_000_000_000
@@ -141,10 +166,45 @@ class LiveTelemetry:
                 sample = Sample(self.sequence, now, x, y, "rover")
                 self.truth = (x, y)
                 self.sequence = (self.sequence + 1) % (1 << 32)
-            packet = encode(sample)
-            await asyncio.wait_for(loop.sock_sendall(tcp, FRAME_LENGTH.pack(len(packet)) + packet), IO_TIMEOUT)
-            await asyncio.wait_for(loop.sock_sendto(udp, packet, udp_target), IO_TIMEOUT)
+                for name, queue in outgoing.items():
+                    stats = self.sender_stats[name]
+                    if queue.full():
+                        stats.dropped += 1
+                        continue
+                    if stats.busy or not queue.empty():
+                        stats.delayed += 1
+                    queue.put_nowait(sample)
             await asyncio.sleep(1 / RATE)
+
+    async def _sender(self, name: str, queue: asyncio.Queue[Sample],
+                      send: Callable[[bytes], Awaitable[None]]) -> None:
+        stats = self.sender_stats[name]
+        while True:
+            try:
+                sample = await asyncio.wait_for(queue.get(), IO_TIMEOUT)
+            except TimeoutError:
+                continue
+            with self.lock:
+                stats.busy = True
+                stats.queue_wait_ms = (time.perf_counter_ns() - sample.generated_ns) / 1_000_000
+            try:
+                await send(encode(sample))
+            finally:
+                with self.lock:
+                    stats.busy = False
+
+    async def _send_tcp(self, sock: socket.socket, packet: bytes) -> None:
+        loop = asyncio.get_running_loop()
+        # Keep one in-progress frame intact across backpressure intervals.
+        send = asyncio.create_task(loop.sock_sendall(sock, FRAME_LENGTH.pack(len(packet)) + packet))
+        try:
+            while not send.done():
+                await asyncio.wait((send,), timeout=IO_TIMEOUT)
+            send.result()
+        finally:
+            if not send.done():
+                send.cancel()
+                await asyncio.gather(send, return_exceptions=True)
 
     async def _tcp_receive(self, sock: socket.socket) -> None:
         reader, writer = await asyncio.open_connection(sock=sock)
@@ -197,8 +257,12 @@ class LiveTelemetry:
                 "truth": {"x": self.truth[0], "y": self.truth[1]},
                 "sequence": self.sequence,
                 "error": self.error,
-                "tcp": self.metrics["tcp"].snapshot(now, *self.truth),
-                "udp": self.metrics["udp"].snapshot(now, *self.truth),
+                **{name: {
+                    **metrics.snapshot(now, *self.truth),
+                    "source_queue_dropped": self.sender_stats[name].dropped,
+                    "source_queue_delayed": self.sender_stats[name].delayed,
+                    "source_queue_wait_ms": self.sender_stats[name].queue_wait_ms,
+                } for name, metrics in self.metrics.items()},
             }
 
     def control(self, settings: dict) -> None:
