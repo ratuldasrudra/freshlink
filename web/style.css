@@ -1,0 +1,43 @@
+:root { color-scheme: dark; font: 17px/1.45 system-ui,sans-serif; background:#09121a; color:#eff5fa; }
+* { box-sizing:border-box; }
+body { margin:0; }
+main { width:min(1320px,100% - 56px); margin:32px auto; }
+header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+h1 { margin:0; font-size:clamp(2.5rem,6vw,4rem); line-height:1; letter-spacing:-.055em; }
+h2 { font-size:1.18rem; margin:0 0 .55rem; }
+p { margin:.5rem 0; }
+.eyebrow { color:#91e5be; font-size:.77rem; letter-spacing:.15em; font-weight:750; }
+.lead { margin-top:1.15rem; font-size:1.28rem; font-weight:650; }
+.muted,footer { color:#b8c8d6; }
+#connection { background:#172735; padding:8px 12px; border-radius:8px; text-align:center; }
+.panel { background:#12202b; border:1px solid #354859; border-radius:12px; padding:18px 22px; min-width:0; }
+.controls { margin-top:18px; }
+.presets { display:flex; flex-wrap:wrap; gap:8px; }
+button,input { font:inherit; }
+button { border:1px solid #6c889e; background:#213748; color:#fff; border-radius:7px; padding:7px 13px; cursor:pointer; }
+button[aria-pressed="true"],button:hover { color:#09121a; background:#a8efcc; }
+button:disabled { opacity:.65; }
+:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+summary { cursor:pointer; }
+#fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:12px 0; }
+label:not(.check) { display:grid; gap:4px; }
+input[type="number"] { width:100%; color:inherit; background:#09121a; padding:5px 8px; border:1px solid #6c889e; border-radius:4px; }
+.check { margin-right:12px; }
+.comparison,.charts { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+.tcp { border-top:4px solid #ffc078; }
+.udp { border-top:4px dashed #91e5be; }
+.age { font-weight:750; font-size:clamp(1.7rem,4vw,2.55rem); font-variant-numeric:tabular-nums; }
+.age small { font-size:1rem; font-weight:500; }
+.status { font-weight:650; }
+.disconnected .comparison,.disconnected .charts { opacity:.4; }
+.metric-details { margin-top:12px; }
+dl { margin:12px 0 0; display:grid; grid-template-columns:1fr auto; gap:6px 12px; }
+dt,dd { margin:0; }
+dd { text-align:right; font-variant-numeric:tabular-nums; }
+canvas { width:100%; height:auto; display:block; max-height:270px; }
+footer { padding:16px 0; }
+@media(max-width:680px) {
+  main { width:calc(100% - 24px); margin:18px auto; }
+  .comparison,.charts { grid-template-columns:1fr; }
+  .panel { padding:14px; }
+}

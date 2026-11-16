@@ -23,11 +23,12 @@ async def _pump(
     receive: Callable[[], Awaitable[bytes | None]],
     send: Callable[[bytes], Awaitable[None]],
     queue: LinkQueue,
+    changed: asyncio.Event | None = None,
 ) -> None:
     pending = None
     accepting = True
     try:
-        while accepting or queue.ready_at is not None:
+        while accepting or queue.has_pending:
             now = time.perf_counter()
             payload = queue.pop(now)
             if payload is not None:
@@ -43,10 +44,19 @@ async def _pump(
                 pending = asyncio.ensure_future(receive())
             ready = queue.ready_at
             delay = None if ready is None else max(0.0, ready - time.perf_counter())
-            if pending is not None:
-                await asyncio.wait((pending,), timeout=delay)
-            elif delay is not None:
-                await asyncio.sleep(delay)
+            wake = asyncio.create_task(changed.wait()) if changed is not None else None
+            waiting = [task for task in (pending, wake) if task is not None]
+            try:
+                if waiting:
+                    await asyncio.wait(waiting, timeout=delay, return_when=asyncio.FIRST_COMPLETED)
+                elif delay is not None:
+                    await asyncio.sleep(delay)
+            finally:
+                if wake is not None:
+                    if wake.done() and not wake.cancelled() and wake.result():
+                        changed.clear()
+                    wake.cancel()
+                    await asyncio.gather(wake, return_exceptions=True)
     finally:
         if pending is not None:
             pending.cancel()
@@ -85,7 +95,8 @@ async def _close_writer(writer: asyncio.StreamWriter, timeout: float) -> None:
         writer.transport.abort()
 
 
-async def _relay_tcp(listener: socket.socket, target: Address, queue: LinkQueue, timeout: float) -> None:
+async def _relay_tcp(listener: socket.socket, target: Address, queue: LinkQueue, timeout: float,
+                     changed: asyncio.Event | None = None) -> None:
     loop = asyncio.get_running_loop()
     accepted, _ = await asyncio.wait_for(loop.sock_accept(listener), timeout)
     with accepted, socket.socket() as downstream:
@@ -101,14 +112,15 @@ async def _relay_tcp(listener: socket.socket, target: Address, queue: LinkQueue,
                     writer.write(payload)
                     await asyncio.wait_for(writer.drain(), timeout)
 
-                await _pump(lambda: _read_frame(reader, timeout), send, queue)
+                await _pump(lambda: _read_frame(reader, timeout), send, queue, changed)
             finally:
                 await _close_writer(writer, timeout)
         finally:
             await _close_writer(upstream_writer, timeout)
 
 
-async def _relay_udp(listener: socket.socket, target: Address, queue: LinkQueue, timeout: float) -> None:
+async def _relay_udp(listener: socket.socket, target: Address, queue: LinkQueue, timeout: float,
+                     changed: asyncio.Event | None = None) -> None:
     loop = asyncio.get_running_loop()
 
     async def receive() -> bytes | None:
@@ -141,10 +153,11 @@ async def _relay_udp(listener: socket.socket, target: Address, queue: LinkQueue,
         if size != len(payload):
             raise OSError("short UDP relay send")
 
-    await _pump(receive, send, queue)
+    await _pump(receive, send, queue, changed)
 
 
-async def run_relay(listener: socket.socket, target: Address, profile: Profile, timeout: float) -> None:
+async def run_relay(listener: socket.socket, target: Address, profile: Profile, timeout: float,
+                    *, queue: LinkQueue | None = None, changed: asyncio.Event | None = None) -> None:
     """Relay from a bound IPv4 loopback socket until EOF, UDP idle, or cancellation."""
     if listener.family != socket.AF_INET or listener.type not in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
         raise ValueError("the relay requires an IPv4 TCP or UDP socket")
@@ -158,12 +171,15 @@ async def run_relay(listener: socket.socket, target: Address, profile: Profile, 
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be finite and positive")
     ordered = listener.type == socket.SOCK_STREAM
-    queue = LinkQueue(profile, ordered=ordered)
+    if queue is None:
+        queue = LinkQueue(profile, ordered=ordered)
+    elif queue.ordered != ordered or queue.profile != profile:
+        raise ValueError("queue must match relay transport and initial profile")
     listener.setblocking(False)
     if ordered:
-        await _relay_tcp(listener, target, queue, timeout)
+        await _relay_tcp(listener, target, queue, timeout, changed)
     else:
-        await _relay_udp(listener, target, queue, timeout)
+        await _relay_udp(listener, target, queue, timeout, changed)
 
 
 def main() -> int:

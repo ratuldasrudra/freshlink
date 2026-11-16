@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreshLink · Telemetry lab</title>
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+<main>
+  <header>
+    <div><p class="eyebrow">LIVE TELEMETRY LAB</p><h1>FreshLink</h1></div>
+    <p id="connection" role="status">Connecting…</p>
+  </header>
+  <p class="lead">TCP keeps updates in order. UDP can skip gaps and show newer positions.</p>
+  <p class="muted">Emulated conditions on loopback. TCP stalls here come from relay queueing or a paused relay. Kernel retransmissions are unavailable.</p>
+  <section class="panel controls" aria-labelledby="controls-title">
+    <h2 id="controls-title">Link conditions</h2>
+    <div class="presets" aria-label="Impairment presets">
+      <button type="button" data-preset="healthy">Healthy</button>
+      <button type="button" data-preset="queue">Queue overload</button>
+      <button type="button" data-preset="loss">UDP loss</button>
+      <button type="button" data-preset="outage">Outage</button>
+    </div>
+    <p id="condition" role="status">Initial conditions · Healthy</p>
+    <button type="button" id="reset">Reset counters</button>
+    <span id="window">Counter window · 0 s</span>
+    <details>
+      <summary>Custom impairment</summary>
+      <form id="settings">
+        <div id="fields"></div>
+        <label class="check"><input name="outage" type="checkbox"> Outage</label>
+        <button type="submit">Apply settings</button>
+      </form>
+    </details>
+  </section>
+  <section class="comparison" aria-label="Transport comparison" id="comparison"></section>
+  <section class="charts" aria-label="Live charts">
+    <article class="panel"><h2>Rover position</h2>
+      <p class="muted">● Ground truth &nbsp; ■ TCP &nbsp; ▲ UDP</p>
+      <canvas id="position" width="430" height="260" aria-label="Latest rover positions on x and y axes">See position error in the protocol panels.</canvas>
+    </article>
+    <article class="panel"><h2>Information age · last 20 s</h2>
+      <p class="muted">━ TCP &nbsp; ┅ UDP &nbsp; ··· Stale threshold</p>
+      <canvas id="history" width="570" height="260" aria-label="TCP and UDP information age in milliseconds over time">See current information age in the protocol panels.</canvas>
+    </article>
+  </section>
+  <footer>Counters and stale time cover the window since reset or preset change. Stale time begins when a position is known. Latency percentiles use up to 4,096 accepted updates in that window. Information age and position are current values.</footer>
+</main>
+</body>
+</html>

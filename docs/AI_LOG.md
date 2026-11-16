@@ -48,3 +48,30 @@
 - Human review — the owner approved the previous milestone. Review of this relay is pending.
 - Mistake and recovery — the initial Windows TCP test put its client socket into listen mode through a fixture helper, causing WinError 10022. The client now uses a separate non-listening socket and the loopback integration test passes.
 - Verification — `python -m unittest discover -s tests -v` passed 17 tests. Twenty Windows reruns with `python -W error::ResourceWarning -m unittest discover -s tests -q` passed. The Windows CLI probe relayed 12 TCP samples and recorded all four UDP faults with seed 17 using ephemeral ports. Both CLI paths exited successfully. No performance benchmarks were run.
+
+## 2026-11-16 · Dashboard telemetry and controls in progress
+
+- Tool and model — Codex desktop and GPT-6.1 Terra.
+- Goal — connect the SSE server to shared live telemetry through the existing TCP and UDP relays and add a validated loopback control endpoint.
+- Produced — a live source, two receiver metrics, and a relay profile update path. Settings apply to future admissions; queued frames retain their original eligibility. Outage pauses TCP release and drops newly admitted UDP datagrams.
+- Human review — the owner requested this bounded step. Review of the implementation remains pending.
+- Mistakes and fixes — the initial stale-time fraction divided by time before the first known sample. It now divides by elapsed time since first receipt. A control test initially treated HTTPConnection as a context manager and failed; explicit cleanup fixed it. The first relay wake-up implementation cleared a shared event for both relays; separate events prevent one relay consuming the other's notification. A repeated suite run failed intermittently without captured details; the outage test now allows packets already in flight to settle before checking the receiver counts.
+- Verification — `python -m unittest discover -s tests -v` passed 23 tests on Windows with loopback access, including SSE delivery from both relay paths, invalid control rejection, a short outage, recovery, and cleanup. Twenty subsequent full suite runs passed. A separate six-second loopback outage recovered on both paths. Dashboard UI and Linux local execution remain unverified.
+
+## 2026-11-16 · Sender isolation and outage regression
+
+The owner requested independent TCP and UDP sender tasks and a root-cause investigation of the intermittent outage test. The previous failure was discarded by the repeat harness, so its exact exception cannot be recovered. A new harness captured a failure on run 20. Windows logged the intended HTTP 403, then aborted the client connection with WinError 10053 before the status arrived. The handler rejected the origin and closed the socket with an unread POST body. Reading the bounded request body before sending the rejection addressed the reproduced failure. The original failure may have had the same cause.
+
+The old assertion also assumed that the control response formed a receiver delivery barrier. A gated TCP reader now demonstrates that a pre-outage release can be accepted after the endpoint acknowledges the outage. The test observes TCP releases and UDP drops directly, then checks recovery. It does not use a settle delay. Fifty successive outage runs passed after the HTTP fix, with tracebacks and snapshots retained on failure. A separate test held the TCP sender blocked until its source queue overflowed and verified UDP sequence continuity and delivery cadence.
+
+## 2026-11-16 · Dashboard page and launcher
+
+The 24-test Windows suite passed with loopback access, and `node --check web/app.js` passed. The Windows launcher opened the page on an ephemeral port. In the browser, UDP loss increased the relay drop count, an outage made both paths stale, and Healthy restored freshness. Reloading during UDP loss restored the selected preset from the server. The initial metric lists pushed the charts down the page, so the detailed rows now expand on demand. Interrupting the launcher ended the preview process, but the terminal reported exit code 1, so a clean CLI exit status remains unverified.
+
+## 2026-11-16 · Dashboard polish
+
+- The owner reviewed screenshots of the running dashboard and requested resettable counters, a readable age chart, restart reconnection, a disconnected indicator, and corrected plot labels.
+- Produced a counter reset, capped chart with a labeled threshold and dashed UDP line, disconnected age and dimming, a demo script, and README updates. The launcher already used port 8000 with a port override.
+- Browser verification on Windows showed preset and manual counter resets, the chart and rover labels, disconnected status after stopping the server, and automatic recovery after restarting it on the same port without reloading.
+- The reset unit and integration tests passed in the Windows standard-library suite. A screenshot of the live dashboard was saved to docs/dashboard.jpg. A fresh local clone and new virtual environment passed all 25 tests and opened the dashboard with the README command. The first test invocation accidentally ran in the original working directory; rerunning from the clone corrected that check. Owner review of the polish is pending.
+- The first hosted Python 3.11 jobs hung after three telemetry shutdown timeouts. Timed thread dumps showed the event-loop threads still active. Shutdown now retries cancellation for pending tasks after one second. The full suite passed locally and on both Windows and Ubuntu hosted Python 3.11 jobs after this change. The exact internal asyncio cancellation sequence remains unproven.

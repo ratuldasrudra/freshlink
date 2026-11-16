@@ -130,6 +130,10 @@ class UdpReceiver:
                 raise
             LOGGER.debug("UDP rejected: oversized datagram")
             return None
+        return self.accept_packet(packet, peer)
+
+    def accept_packet(self, packet: bytes, peer: tuple[str, int]) -> Sample | None:
+        """Validate a received datagram and accept it only if it advances state."""
         if self.peer is not None and peer != self.peer:
             LOGGER.debug("UDP rejected: unexpected sender")
             return None
