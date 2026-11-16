@@ -79,3 +79,9 @@ The 24-test Windows suite passed with loopback access, and `node --check web/app
 ## 2026-11-16 · Shutdown regression coverage
 
 The owner requested a hard deadline after the Python 3.11 hang. The shutdown test starts and stops active TCP and UDP traffic in a subprocess, logs each stop, and collects thread dumps before the parent kills a stuck process. Shutdown also logs cancellation retries. The root cause of the original Python 3.11 hang remains unproven.
+
+## 2026-11-16 · Headless experiments
+
+Codex implemented the collector, bootstrap analysis, and figures, and ran the Windows reference study. The owner specified the conditions, minimum repeats, validity checks, and reporting requirements. The full dataset retains every reference run. The separate one-repeat probe was a preflight check and was excluded from the reference analysis by design.
+
+The first analyzer accepted a CSV that omitted whole repeats as long as its remaining repeats were internally complete. It now requires ten full repeats for reference analysis and a single full repeat for quick mode. The output records missing recovery observations explicitly. The quick workflow passed on hosted Windows and Ubuntu, and all declared validity checks passed in the 70-trial Windows reference dataset. A full Ubuntu reference run was not performed.

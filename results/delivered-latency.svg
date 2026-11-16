@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 370" role="img">
+<title>95th percentile delivered-update latency and 95% bootstrap intervals by condition</title>
+<rect width="100%" height="100%" fill="#fff"/>
+<defs><pattern id="stripe" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#d9eeec"/><path d="M0 7L7 0" stroke="#146a70"/></pattern></defs>
+<g font-family="sans-serif" font-size="13" fill="#182636">
+<text x="85" y="24" font-size="19" font-weight="bold">95th percentile delivered-update latency</text>
+<text x="18" y="170" text-anchor="middle" transform="rotate(-90 18 170)">Milliseconds (ms)</text>
+<path d="M80 285.0H970" stroke="#ddd"/><text x="70" y="289.0" text-anchor="end">0</text>
+<path d="M80 165.0H970" stroke="#ddd"/><text x="70" y="169.0" text-anchor="end">2500</text>
+<path d="M80 45.0H970" stroke="#ddd"/><text x="70" y="49.0" text-anchor="end">5000</text>
+<text x="140" y="310" text-anchor="middle">Healthy</text>
+<rect x="109" y="284.7538344" width="26" height="0.24616559999998344" fill="#d28337" stroke="#243343"/>
+<path d="M122 284.7637728V284.7487152m-5 0h10M117 284.7637728h10" stroke="#182636" fill="none"/>
+<rect x="144" y="284.795988" width="26" height="0.20401199999997743" fill="url(#stripe)" stroke="#243343"/>
+<path d="M157 284.8071168V284.7881136m-5 0h10M152 284.8071168h10" stroke="#182636" fill="none"/>
+<text x="263" y="310" text-anchor="middle">Stationary</text>
+<rect x="232" y="284.766972" width="26" height="0.23302799999999024" fill="#d28337" stroke="#243343"/>
+<path d="M245 284.76888V284.7486864m-5 0h10M240 284.76888h10" stroke="#182636" fill="none"/>
+<rect x="267" y="284.8083528" width="26" height="0.19164719999997715" fill="url(#stripe)" stroke="#243343"/>
+<path d="M280 284.8114608V284.787624m-5 0h10M275 284.8114608h10" stroke="#182636" fill="none"/>
+<text x="386" y="310" text-anchor="middle">Overload</text>
+<rect x="355" y="74.95921440000001" width="26" height="210.0407856" fill="#d28337" stroke="#243343"/>
+<path d="M368 75.30324240000004V74.40546000000003m-5 0h10M363 75.30324240000004h10" stroke="#182636" fill="none"/>
+<rect x="390" y="90.06302880000001" width="26" height="194.9369712" fill="url(#stripe)" stroke="#243343"/>
+<path d="M403 91.0860384V87.9200568m-5 0h10M398 91.0860384h10" stroke="#182636" fill="none"/>
+<text x="509" y="310" text-anchor="middle">UDP loss 10%</text>
+<rect x="478" y="282.6195648" width="26" height="2.380435200000022" fill="#d28337" stroke="#243343"/>
+<path d="M491 282.6350496V282.6022608m-5 0h10M486 282.6350496h10" stroke="#182636" fill="none"/>
+<rect x="513" y="282.6401928" width="26" height="2.3598071999999775" fill="url(#stripe)" stroke="#243343"/>
+<path d="M526 282.6544176V282.6245904m-5 0h10M521 282.6544176h10" stroke="#182636" fill="none"/>
+<text x="632" y="310" text-anchor="middle">UDP loss 30%</text>
+<rect x="601" y="282.6231624" width="26" height="2.3768375999999876" fill="#d28337" stroke="#243343"/>
+<path d="M614 282.6328368V282.61584846m-5 0h10M609 282.6328368h10" stroke="#182636" fill="none"/>
+<rect x="636" y="282.6380208" width="26" height="2.3619792000000075" fill="url(#stripe)" stroke="#243343"/>
+<path d="M649 282.6473904V282.6263904m-5 0h10M644 282.6473904h10" stroke="#182636" fill="none"/>
+<text x="755" y="310" text-anchor="middle">UDP loss 45%</text>
+<rect x="724" y="282.6113544" width="26" height="2.388645600000018" fill="#d28337" stroke="#243343"/>
+<path d="M737 282.623808V282.6014256m-5 0h10M732 282.623808h10" stroke="#182636" fill="none"/>
+<rect x="759" y="282.6289536" width="26" height="2.3710464000000115" fill="url(#stripe)" stroke="#243343"/>
+<path d="M772 282.6414048V282.6036816m-5 0h10M767 282.6414048h10" stroke="#182636" fill="none"/>
+<text x="878" y="310" text-anchor="middle">Outage</text>
+<rect x="847" y="197.5115448" width="26" height="87.4884552" fill="#d28337" stroke="#243343"/>
+<path d="M860 198.0631584V197.0429232m-5 0h10M855 198.0631584h10" stroke="#182636" fill="none"/>
+<rect x="882" y="284.7977232" width="26" height="0.20227679999999282" fill="url(#stripe)" stroke="#243343"/>
+<path d="M895 284.8154472V284.785056m-5 0h10M890 284.8154472h10" stroke="#182636" fill="none"/>
+<text x="85" y="345">Solid TCP · Striped UDP · Whiskers show 95% bootstrap CIs</text></g></svg>
