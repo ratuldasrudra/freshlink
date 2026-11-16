@@ -35,3 +35,9 @@
 - Decision — track one sender and one latest snapshot per run; use modulo sequence comparison and reject decreasing generation times.
 - Alternatives — restore order with a jitter buffer or retry missing positions.
 - Reason — a new complete snapshot can replace an old one immediately. The policy preserves receiver freshness with constant memory and keeps retransmission outside the approved scope.
+
+## 2026-11-16 · Bounded relay scheduling
+
+- Decision — schedule releases by eligibility time and pace them by application bytes. TCP clamps eligibility to preserve FIFO and pauses frame intake when the queue is full. UDP lets eligible datagrams pass delayed ones and drops new copies when capacity is exhausted.
+- Alternatives — sleep for each incoming frame before reading the next one, or use privileged packet interception.
+- Reason — separating intake from release lets delay and bandwidth be configured independently. The relay works on loopback with standard-library sockets and ordinary user privileges.

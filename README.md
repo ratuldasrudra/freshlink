@@ -14,3 +14,25 @@ Use `udp` in both commands to try datagrams. The TCP receiver exits at EOF and t
 Both commands default to IPv4 loopback `127.0.0.1`, port `8765`, and a three-second socket timeout. The sender defaults to 20 samples at 10 samples per second and accepts a maximum rate of 100 per second. Change these with `--host`, `--port`, `--timeout`, `--count`, and `--rate`. The receiver can bind port zero and prints the selected port.
 
 Run the tests with `python -m unittest discover -s tests -v`.
+
+### Run through the impairment relay
+
+From the repository root, run each line in its own terminal, in order. The relay listens on `127.0.0.1:8766` and forwards to the receiver on `127.0.0.1:8765`.
+
+```text
+python -m src.freshlink receive tcp --timeout 30 --debug
+python -m tools.impair_proxy tcp --timeout 30 --seed 17 --delay-ms 120 --jitter-ms 30 --bytes-per-second 400 --debug
+python -m src.freshlink send tcp --port 8766 --debug
+```
+
+For UDP, use the following commands:
+
+```text
+python -m src.freshlink receive udp --timeout 30 --debug
+python -m tools.impair_proxy udp --timeout 30 --seed 17 --delay-ms 40 --jitter-ms 10 --loss 0.2 --duplicate 0.2 --reorder 0.3 --reorder-ms 200 --corrupt 0.1 --debug
+python -m src.freshlink send udp --port 8766 --debug
+```
+
+The relay runs in user space with no administrator permissions. TCP delay, jitter, queueing, and bandwidth limits are **emulated at the application layer**. The relay preserves the bytes it forwards and does not create native TCP segment loss or exercise kernel retransmission. UDP fault options change which datagrams the relay forwards and when.
+
+Use `python -m tools.impair_proxy --help` for all options. Fault options are probabilities from 0 to 1. The default seed is 0, the queue has 64 slots, and a zero byte rate leaves the relay unpaced. Addresses default to IPv4 loopback and the sender still defaults to 10 samples per second. TCP serves one connection and drains on EOF or idle. UDP drains after input goes idle. Ctrl+C stops either process. See the [relay walkthrough](docs/EXPLAIN-impairment.md).

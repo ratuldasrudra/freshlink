@@ -39,3 +39,12 @@
 - Human review — the owner approved repository setup and requested the transport milestone. Transport code review is pending.
 - Mistake and recovery — the first full test invocation used the default sandbox. TCP connect returned WinError 10013 and UDP reads timed out. Running the same tests with loopback access passed, isolating the failure to the execution environment.
 - Verification — `python -m unittest discover -s tests -v` passed 11 tests on Windows. Twenty further runs of `python -m unittest discover -s tests -q` passed. CLI sender and receiver subprocesses delivered three samples and exited successfully on each transport, using ephemeral ports. The seeded UDP test recorded loss, duplicate, reordering, and checksum rejection. Benchmarks were not run.
+
+## 2026-11-16 · Impairment relay
+
+- Tool and model — Codex desktop, GPT-6.1 Sol, PowerShell, and GitHub.
+- Goal and prompt — the owner approved the transport core and requested a seeded loopback relay, deterministic tests, documentation, and a verified PR before dashboard work.
+- Produced — a bounded scheduler and one-way CLI relay with TCP application delay, jitter, and pacing; UDP adds loss, duplication, reordering, and corruption. The walkthrough records an actual loss and reordering trace.
+- Human review — the owner approved the previous milestone. Review of this relay is pending.
+- Mistake and recovery — the initial Windows TCP test put its client socket into listen mode through a fixture helper, causing WinError 10022. The client now uses a separate non-listening socket and the loopback integration test passes.
+- Verification — `python -m unittest discover -s tests -v` passed 17 tests. Twenty Windows reruns with `python -W error::ResourceWarning -m unittest discover -s tests -q` passed. The Windows CLI probe relayed 12 TCP samples and recorded all four UDP faults with seed 17 using ephemeral ports. Both CLI paths exited successfully. No performance benchmarks were run.

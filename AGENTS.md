@@ -143,7 +143,7 @@ Prefer clear code over clever code. Do not leave the owner with a module they ca
 
 - Run tests: `python -m unittest discover -s tests -v`
 - Run the demo: `<fill in>`
-- Run the impairment proxy: `<fill in>`
+- Run the impairment proxy: `python -m tools.impair_proxy tcp --timeout 30 --seed 17 --delay-ms 120 --jitter-ms 30 --bytes-per-second 400 --debug` (see README for sender/receiver commands and the UDP variant).
 - Run an experiment: `<fill in>`
 
 ## 14. Definition of done
