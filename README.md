@@ -15,6 +15,14 @@ Both commands default to IPv4 loopback `127.0.0.1`, port `8765`, and a three-sec
 
 Run the tests with `python -m unittest discover -s tests -v`.
 
+To start the live dashboard and open your default browser, run this from the repository root in PowerShell:
+
+```powershell
+python -m src.freshlink.server --open
+```
+
+The server listens on `http://127.0.0.1:8000/`. Use `--port 0` to pick an available port or open the printed URL manually if needed. Press Ctrl+C in PowerShell to stop the demo.
+
 ### Run through the impairment relay
 
 From the repository root, run each line in its own terminal, in order. The relay listens on `127.0.0.1:8766` and forwards to the receiver on `127.0.0.1:8765`.

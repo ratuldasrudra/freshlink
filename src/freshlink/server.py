@@ -124,18 +124,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
 def main() -> None:
     """Start live telemetry and serve the dashboard on a loopback port."""
     import argparse
+    import webbrowser
 
     from .live import LiveTelemetry
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--open", action="store_true", help="open the dashboard in the default browser")
     args = parser.parse_args()
     live = LiveTelemetry()
     server = None
     try:
         live.start()
         server = DashboardServer(args.port, live.snapshot, live.control)
-        print(f"FreshLink dashboard at http://127.0.0.1:{server.server_port}/", flush=True)
+        url = f"http://127.0.0.1:{server.server_port}/"
+        print(f"FreshLink dashboard at {url}", flush=True)
+        if args.open:
+            webbrowser.open(url)
         server.serve_forever()
     except KeyboardInterrupt:
         pass
