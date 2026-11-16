@@ -56,11 +56,17 @@ class LinkQueue:
         self._input = 0
         self._last_eligible = 0.0
         self._next_send = 0.0
+        self.paused = False
 
     @property
     def full(self) -> bool:
         """Report whether all queue slots are occupied."""
         return len(self._pending) >= self.profile.queue_packets
+
+    @property
+    def has_pending(self) -> bool:
+        """Report queued traffic even when releases are paused."""
+        return bool(self._pending)
 
     def admit(self, payload: bytes, now: float) -> None:
         """Queue a TCP frame unchanged or apply seeded faults to one UDP datagram."""
@@ -101,9 +107,17 @@ class LinkQueue:
     @property
     def ready_at(self) -> float | None:
         """Return the next eligibility time including bandwidth pacing."""
-        if not self._pending:
+        if not self._pending or self.paused:
             return None
         return max(self._pending[0][0], self._next_send)
+
+    def update_profile(self, profile: Profile) -> None:
+        """Apply new fault probabilities to future inputs and preserve queued items."""
+        if self.ordered and (profile.loss or profile.duplicate or profile.reorder or profile.corrupt):
+            raise ValueError("TCP supports only delay, jitter, and bandwidth limiting")
+        if profile.seed != self.profile.seed or profile.queue_packets != self.profile.queue_packets:
+            raise ValueError("seed and queue capacity cannot change during a run")
+        self.profile = profile
 
     def pop(self, now: float) -> bytes | None:
         """Release the next eligible payload and schedule its serialization gap."""

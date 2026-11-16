@@ -41,3 +41,9 @@
 - Decision — schedule releases by eligibility time and pace them by application bytes. TCP clamps eligibility to preserve FIFO and pauses frame intake when the queue is full. UDP lets eligible datagrams pass delayed ones and drops new copies when capacity is exhausted.
 - Alternatives — sleep for each incoming frame before reading the next one, or use privileged packet interception.
 - Reason — separating intake from release lets delay and bandwidth be configured independently. The relay works on loopback with standard-library sockets and ordinary user privileges.
+
+## 2026-11-16 · Live control semantics
+
+- Decision — update both relay profiles atomically on their event loop. New delay and fault settings apply to future admissions, while queued items retain their eligibility. An outage pauses TCP releases and drops newly arriving UDP datagrams.
+- Alternatives — discard queued TCP data or reset both connections on each change.
+- Reason — preserving admitted TCP bytes and order supports a continuous freshness demo. The control endpoint uses the existing loopback-only HTTP server and restricts browser origins.

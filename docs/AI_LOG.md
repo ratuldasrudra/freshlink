@@ -48,3 +48,12 @@
 - Human review — the owner approved the previous milestone. Review of this relay is pending.
 - Mistake and recovery — the initial Windows TCP test put its client socket into listen mode through a fixture helper, causing WinError 10022. The client now uses a separate non-listening socket and the loopback integration test passes.
 - Verification — `python -m unittest discover -s tests -v` passed 17 tests. Twenty Windows reruns with `python -W error::ResourceWarning -m unittest discover -s tests -q` passed. The Windows CLI probe relayed 12 TCP samples and recorded all four UDP faults with seed 17 using ephemeral ports. Both CLI paths exited successfully. No performance benchmarks were run.
+
+## 2026-11-16 · Dashboard telemetry and controls in progress
+
+- Tool and model — Codex desktop and GPT-6.1 Terra.
+- Goal — connect the SSE server to shared live telemetry through the existing TCP and UDP relays and add a validated loopback control endpoint.
+- Produced — a live source, two receiver metrics, and a relay profile update path. Settings apply to future admissions; queued frames retain their original eligibility. Outage pauses TCP release and drops newly admitted UDP datagrams.
+- Human review — the owner requested this bounded step. Review of the implementation remains pending.
+- Mistakes and fixes — the initial stale-time fraction divided by time before the first known sample. It now divides by elapsed time since first receipt. A control test initially treated HTTPConnection as a context manager and failed; explicit cleanup fixed it. The first relay wake-up implementation cleared a shared event for both relays; separate events prevent one relay consuming the other's notification. A repeated suite run failed intermittently without captured details; the outage test now allows packets already in flight to settle before checking the receiver counts.
+- Verification — `python -m unittest discover -s tests -v` passed 23 tests on Windows with loopback access, including SSE delivery from both relay paths, invalid control rejection, a short outage, recovery, and cleanup. Twenty subsequent full suite runs passed. A separate six-second loopback outage recovered on both paths. Dashboard UI and Linux local execution remain unverified.

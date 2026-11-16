@@ -10,7 +10,7 @@ import time
 from .metrics import ReceiverMetrics
 from .protocol import FRAME_LENGTH, MAX_PACKET_BYTES, Sample, decode, encode
 from .transport import DEFAULT_HOST, UdpReceiver, WSAEMSGSIZE
-from .impairment import Profile
+from .impairment import LinkQueue, Profile
 from tools.impair_proxy import run_relay
 
 RATE = 10
@@ -48,6 +48,8 @@ class LiveTelemetry:
         self.thread: threading.Thread | None = None
         self.ready = threading.Event()
         self.stopping = threading.Event()
+        self.queues: dict[str, LinkQueue] = {}
+        self.changed: dict[str, asyncio.Event] = {}
 
     def start(self) -> None:
         """Start the socket workers and wait until initialization finishes."""
@@ -89,9 +91,16 @@ class LiveTelemetry:
             tcp_sender.setblocking(False)
             udp_sender = _bind(socket.SOCK_DGRAM)
             sockets.append(udp_sender)
+            self.changed = {"tcp": asyncio.Event(), "udp": asyncio.Event()}
+            self.queues = {
+                "tcp": LinkQueue(self.tcp_profile, ordered=True),
+                "udp": LinkQueue(self.udp_profile, ordered=False),
+            }
             tasks = [
-                asyncio.create_task(run_relay(tcp_relay, tcp_target.getsockname(), self.tcp_profile, IO_TIMEOUT)),
-                asyncio.create_task(run_relay(udp_relay, udp_target.getsockname(), self.udp_profile, IO_TIMEOUT)),
+                asyncio.create_task(run_relay(tcp_relay, tcp_target.getsockname(), self.tcp_profile, IO_TIMEOUT,
+                                              queue=self.queues["tcp"], changed=self.changed["tcp"])),
+                asyncio.create_task(run_relay(udp_relay, udp_target.getsockname(), self.udp_profile, IO_TIMEOUT,
+                                              queue=self.queues["udp"], changed=self.changed["udp"])),
             ]
             await asyncio.wait_for(self.loop.sock_connect(tcp_sender, tcp_relay.getsockname()), IO_TIMEOUT)
             receiver, _ = await asyncio.wait_for(self.loop.sock_accept(tcp_target), IO_TIMEOUT)
@@ -141,8 +150,14 @@ class LiveTelemetry:
         reader, writer = await asyncio.open_connection(sock=sock)
         try:
             while True:
+                try:
+                    first = await asyncio.wait_for(reader.read(1), IO_TIMEOUT)
+                except TimeoutError:
+                    continue
+                if not first:
+                    raise EOFError("TCP receiver disconnected")
                 async with asyncio.timeout(IO_TIMEOUT):
-                    prefix = await reader.readexactly(FRAME_LENGTH.size)
+                    prefix = first + await reader.readexactly(FRAME_LENGTH.size - 1)
                     (size,) = FRAME_LENGTH.unpack(prefix)
                     if not 1 <= size <= MAX_PACKET_BYTES:
                         raise ValueError("invalid TCP packet length")
@@ -159,6 +174,8 @@ class LiveTelemetry:
         while True:
             try:
                 packet, peer = await asyncio.wait_for(loop.sock_recvfrom(sock, MAX_PACKET_BYTES + 1), IO_TIMEOUT)
+            except TimeoutError:
+                continue
             except ConnectionResetError:
                 continue
             except OSError as error:
@@ -183,6 +200,49 @@ class LiveTelemetry:
                 "tcp": self.metrics["tcp"].snapshot(now, *self.truth),
                 "udp": self.metrics["udp"].snapshot(now, *self.truth),
             }
+
+    def control(self, settings: dict) -> None:
+        """Apply validated settings atomically on the relay event loop."""
+        from concurrent.futures import Future
+
+        allowed = {"delay_ms", "jitter_ms", "bytes_per_second", "loss", "duplicate",
+                   "reorder", "reorder_ms", "corrupt", "outage"}
+        if not isinstance(settings, dict) or set(settings) != allowed:
+            raise ValueError("control requires exactly the documented fields")
+        if type(settings["outage"]) is not bool:
+            raise ValueError("outage must be a boolean")
+        for key in allowed - {"outage"}:
+            if type(settings[key]) not in (int, float) or not math.isfinite(settings[key]):
+                raise ValueError(f"{key} must be a finite number")
+        if type(settings["bytes_per_second"]) is not int or not 0 <= settings["bytes_per_second"] <= 1_000_000:
+            raise ValueError("bytes_per_second must be an integer from 0 to 1000000")
+        if any(not 0 <= settings[key] <= 10000 for key in ("delay_ms", "jitter_ms", "reorder_ms")):
+            raise ValueError("delay values must be between 0 and 10000 ms")
+        shared = dict(delay=settings["delay_ms"] / 1000, jitter=settings["jitter_ms"] / 1000,
+                      bytes_per_second=settings["bytes_per_second"])
+        tcp = Profile(seed=self.tcp_profile.seed, queue_packets=self.tcp_profile.queue_packets, **shared)
+        udp = Profile(seed=self.udp_profile.seed, queue_packets=self.udp_profile.queue_packets,
+                      loss=1.0 if settings["outage"] else settings["loss"],
+                      duplicate=settings["duplicate"], reorder=settings["reorder"],
+                      reorder_delay=settings["reorder_ms"] / 1000, corrupt=settings["corrupt"], **shared)
+        loop = self.loop
+        if loop is None or not loop.is_running():
+            raise RuntimeError("telemetry is not running")
+        result: Future[None] = Future()
+
+        def apply() -> None:
+            try:
+                self.queues["tcp"].update_profile(tcp)
+                self.queues["udp"].update_profile(udp)
+                self.queues["tcp"].paused = settings["outage"]
+                self.changed["tcp"].set()
+                self.changed["udp"].set()
+                result.set_result(None)
+            except Exception as error:
+                result.set_exception(error)
+
+        loop.call_soon_threadsafe(apply)
+        result.result(timeout=IO_TIMEOUT)
 
     def stop(self) -> None:
         """Stop all workers and wait for their sockets to close."""

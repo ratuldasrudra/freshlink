@@ -9,6 +9,9 @@ import unittest
 from src.freshlink.live import LiveTelemetry
 from src.freshlink.server import DashboardServer
 
+HEALTHY = {"delay_ms": 0, "jitter_ms": 0, "bytes_per_second": 0, "loss": 0,
+           "duplicate": 0, "reorder": 0, "reorder_ms": 0, "corrupt": 0, "outage": False}
+
 
 class LiveTests(unittest.TestCase):
     def test_real_paths_feed_http_events_and_shutdown(self) -> None:
@@ -44,3 +47,55 @@ class LiveTests(unittest.TestCase):
                 thread.join(3)
             live.stop()
         self.assertFalse(live.thread.is_alive())
+
+    def test_control_endpoint_validates_and_changes_live_relay(self) -> None:
+        live = LiveTelemetry()
+        server = None
+        thread = None
+        try:
+            live.start()
+            server = DashboardServer(0, live.snapshot, live.control)
+            thread = threading.Thread(target=server.serve_forever)
+            thread.start()
+
+            def post(settings: dict, origin: str | None = None) -> int:
+                headers = {"Content-Type": "application/json"}
+                if origin:
+                    headers["Origin"] = origin
+                connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=3)
+                try:
+                    connection.request("POST", "/control", json.dumps(settings), headers)
+                    response = connection.getresponse()
+                    response.read()
+                    return response.status
+                finally:
+                    connection.close()
+
+            self.assertEqual(post({**HEALTHY, "loss": 2}), 400)
+            self.assertEqual(post({**HEALTHY, "loss": True}), 400)
+            self.assertEqual(post(HEALTHY, "http://example.com"), 403)
+            self.assertEqual(post({**HEALTHY, "outage": True}), 204)
+            # Packets already sent before the control request may still be in flight.
+            threading.Event().wait(0.3)
+            first = live.snapshot()
+            threading.Event().wait(0.4)
+            second = live.snapshot()
+            self.assertEqual(first["tcp"]["accepted"], second["tcp"]["accepted"])
+            self.assertEqual(first["udp"]["accepted"], second["udp"]["accepted"])
+            self.assertEqual(post(HEALTHY), 204)
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                result = live.snapshot()
+                if (result["tcp"]["accepted"] > second["tcp"]["accepted"]
+                        and result["udp"]["accepted"] > second["udp"]["accepted"]):
+                    break
+                threading.Event().wait(0.02)
+            else:
+                self.fail(f"telemetry did not recover after outage: {result}")
+        finally:
+            if server is not None:
+                server.shutdown()
+                server.server_close()
+            if thread is not None:
+                thread.join(3)
+            live.stop()

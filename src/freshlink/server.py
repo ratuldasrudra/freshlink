@@ -11,6 +11,7 @@ WEB_ROOT = Path(__file__).resolve().parents[2] / "web"
 EVENT_INTERVAL_SECONDS = 0.25
 SOCKET_TIMEOUT_SECONDS = 3
 MAX_CLIENTS = 16
+MAX_CONTROL_BYTES = 4096
 STATIC_FILES = {"/": ("index.html", "text/html; charset=utf-8"),
                 "/app.js": ("app.js", "text/javascript; charset=utf-8"),
                 "/style.css": ("style.css", "text/css; charset=utf-8")}
@@ -22,8 +23,10 @@ class DashboardServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
 
-    def __init__(self, port: int, snapshot: Callable[[], dict]) -> None:
+    def __init__(self, port: int, snapshot: Callable[[], dict],
+                 control: Callable[[dict], None] | None = None) -> None:
         self.snapshot = snapshot
+        self.control = control
         self.clients = threading.BoundedSemaphore(MAX_CLIENTS)
         super().__init__(("127.0.0.1", port), DashboardHandler)
 
@@ -57,6 +60,40 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(content)
+
+    def do_POST(self) -> None:
+        """Validate and apply a loopback-only relay control request."""
+        if self.path != "/control" or self.server.control is None:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        host = self.headers.get("Host", "")
+        expected = f"127.0.0.1:{self.server.server_port}"
+        origin = self.headers.get("Origin")
+        if host != expected or (origin is not None and origin != f"http://{expected}"):
+            self.send_error(HTTPStatus.FORBIDDEN)
+            return
+        if self.headers.get_content_type() != "application/json":
+            self.send_error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+            return
+        length = self.headers.get("Content-Length", "")
+        if not length.isascii() or not length.isdecimal() or not 0 < int(length) <= MAX_CONTROL_BYTES:
+            self.send_error(HTTPStatus.BAD_REQUEST)
+            return
+        try:
+            body = self.rfile.read(int(length))
+            if len(body) != int(length):
+                raise ValueError("incomplete request")
+            settings = json.loads(body)
+            self.server.control(settings)
+        except (ValueError, UnicodeDecodeError):
+            self.send_error(HTTPStatus.BAD_REQUEST)
+            return
+        except (RuntimeError, TimeoutError):
+            self.send_error(HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def _events(self) -> None:
         if not self.server.clients.acquire(blocking=False):
@@ -92,7 +129,7 @@ def main() -> None:
     server = None
     try:
         live.start()
-        server = DashboardServer(args.port, live.snapshot)
+        server = DashboardServer(args.port, live.snapshot, live.control)
         print(f"FreshLink dashboard at http://127.0.0.1:{server.server_port}/", flush=True)
         server.serve_forever()
     except KeyboardInterrupt:
