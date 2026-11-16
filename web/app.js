@@ -50,15 +50,17 @@ for (const protocol of ["tcp", "udp"]) {
   panel.className = `panel ${protocol}`;
   panel.innerHTML = `<h2>${protocol.toUpperCase()} · ${protocol === "tcp" ? "In order" : "Latest valid update"}</h2>
     <div class="age"><span id="${protocol}-age">—</span> <small>ms information age</small></div>
-    <p id="${protocol}-state" class="status">Waiting for data</p><dl></dl>`;
-  const list = panel.querySelector("dl");
+    <p id="${protocol}-state" class="status">Waiting for data</p><dl></dl>
+    <details class="metric-details"><summary>Latency, position, and queue metrics</summary><dl></dl></details>`;
+  const [summaryMetrics, detailedMetrics] = panel.querySelectorAll("dl");
+  const summaryKeys = ["sequence", "stale_fraction", "relay_loss"];
   for (const [key, title] of metricRows) {
     const term = document.createElement("dt");
     const value = document.createElement("dd");
     term.textContent = title;
     value.id = `${protocol}-${key}`;
     value.textContent = "—";
-    list.append(term, value);
+    (summaryKeys.includes(key) ? summaryMetrics : detailedMetrics).append(term, value);
   }
   get("comparison").append(panel);
 }
