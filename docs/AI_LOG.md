@@ -30,3 +30,12 @@
 - The initial main commit contains only LICENSE, README.md, .gitignore and AGENTS.md. A content and filename scan preceded the first push; the local email PDF and temporary renders are ignored.
 - Mistake and recovery: `git merge --no-commit --no-ff --allow-unrelated-histories main` failed because identical untracked LICENSE and README.md would be overwritten. An isolated index and a two-parent commit joined the histories without rewriting either existing commit or deleting the files.
 - CI adds a repository-artifact smoke test; it does not claim transport functionality. Owner review of the new CI is pending.
+
+## 2026-11-16 · Transport core
+
+- Tool and model — Codex desktop, GPT-6.1 Sol, PowerShell, and GitHub.
+- Goal and prompt — proceed with Step 4 by implementing the approved TCP and UDP transport core on a feature branch.
+- Produced — a versioned snapshot codec, bounded TCP framing, a UDP freshness receiver, a loopback CLI, standard-library tests, and a protocol walkthrough with a real test trace.
+- Human review — the owner approved repository setup and requested the transport milestone. Transport code review is pending.
+- Mistake and recovery — the first full test invocation used the default sandbox. TCP connect returned WinError 10013 and UDP reads timed out. Running the same tests with loopback access passed, isolating the failure to the execution environment.
+- Verification — `python -m unittest discover -s tests -v` passed 11 tests on Windows. Twenty further runs of `python -m unittest discover -s tests -q` passed. CLI sender and receiver subprocesses delivered three samples and exited successfully on each transport, using ephemeral ports. The seeded UDP test recorded loss, duplicate, reordering, and checksum rejection. Benchmarks were not run.
