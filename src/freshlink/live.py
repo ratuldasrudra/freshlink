@@ -150,7 +150,16 @@ class LiveTelemetry:
         finally:
             for task in tasks:
                 task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+            done, pending = await asyncio.wait(tasks, timeout=1) if tasks else (set(), set())
+            if pending:
+                # Python 3.11 wait_for can consume cancellation when its inner
+                # operation completes at the same instant. Retry cancellation.
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+            for task in done:
+                if not task.cancelled():
+                    task.exception()
             for sock in sockets:
                 sock.close()
             self.loop = None
