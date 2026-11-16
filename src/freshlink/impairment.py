@@ -60,6 +60,7 @@ class LinkQueue:
         self.released = 0
         self.lost = 0
         self.overflow = 0
+        self.received = 0
 
     @property
     def full(self) -> bool:
@@ -74,6 +75,7 @@ class LinkQueue:
     def admit(self, payload: bytes, now: float) -> None:
         """Queue a TCP frame unchanged or apply seeded faults to one UDP datagram."""
         self._input += 1
+        self.received += 1
         number = self._input
         profile = self.profile
         if self.ordered and self.full:
