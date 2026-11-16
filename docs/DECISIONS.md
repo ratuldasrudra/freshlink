@@ -23,3 +23,15 @@
 - Decision: plan around November 30, with transport core by November 20, MVP by November 23 and experiments by November 26.
 - Alternative: treat November 30 as the confirmed due date.
 - Reason: the email says 14 days from November 16 but gives no explicit submission time; <DEADLINE> remains unverified.
+
+## 2026-11-16 · Shared telemetry packet and bounded I/O
+
+- Decision — encode the same versioned snapshot on both transports and add a bounded length prefix on TCP. Keep the ACK field reserved and zero.
+- Alternatives — newline-delimited text on TCP or separate message formats for each path.
+- Reason — shared packet bytes support fair comparison, and fixed network-order fields simplify validation and byte accounting.
+
+## 2026-11-16 · UDP freshness policy
+
+- Decision — track one sender and one latest snapshot per run; use modulo sequence comparison and reject decreasing generation times.
+- Alternatives — restore order with a jitter buffer or retry missing positions.
+- Reason — a new complete snapshot can replace an old one immediately. The policy preserves receiver freshness with constant memory and keeps retransmission outside the approved scope.
