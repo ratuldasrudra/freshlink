@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 370" role="img">
+<title>Median information age and 95% bootstrap intervals by condition</title>
+<rect width="100%" height="100%" fill="#fff"/>
+<defs><pattern id="stripe" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#d9eeec"/><path d="M0 7L7 0" stroke="#146a70"/></pattern></defs>
+<g font-family="sans-serif" font-size="13" fill="#182636">
+<text x="85" y="24" font-size="19" font-weight="bold">Median information age</text>
+<text x="18" y="170" text-anchor="middle" transform="rotate(-90 18 170)">Milliseconds (ms)</text>
+<path d="M80 285.0H970" stroke="#ddd"/><text x="70" y="289.0" text-anchor="end">0</text>
+<path d="M80 165.0H970" stroke="#ddd"/><text x="70" y="169.0" text-anchor="end">1750</text>
+<path d="M80 45.0H970" stroke="#ddd"/><text x="70" y="49.0" text-anchor="end">3500</text>
+<text x="140" y="310" text-anchor="middle">Healthy</text>
+<rect x="109" y="280.94766857142855" width="26" height="4.052331428571449" fill="#d28337" stroke="#243343"/>
+<path d="M122 281.0126742857143V280.8395622857143m-5 0h10M117 281.0126742857143h10" stroke="#182636" fill="none"/>
+<rect x="144" y="281.0103942857143" width="26" height="3.9896057142856876" fill="url(#stripe)" stroke="#243343"/>
+<path d="M157 281.073408V280.8854742857143m-5 0h10M152 281.073408h10" stroke="#182636" fill="none"/>
+<text x="263" y="310" text-anchor="middle">Stationary</text>
+<rect x="232" y="280.92670285714286" width="26" height="4.073297142857143" fill="#d28337" stroke="#243343"/>
+<path d="M245 280.99688228571426V280.8885m-5 0h10M240 280.99688228571426h10" stroke="#182636" fill="none"/>
+<rect x="267" y="281.0151051428571" width="26" height="3.9848948571428764" fill="url(#stripe)" stroke="#243343"/>
+<path d="M280 281.07570171428574V280.9736982857143m-5 0h10M275 281.07570171428574h10" stroke="#182636" fill="none"/>
+<text x="386" y="310" text-anchor="middle">Overload</text>
+<rect x="355" y="90.23870399999998" width="26" height="194.76129600000002" fill="#d28337" stroke="#243343"/>
+<path d="M368 90.66022628571429V89.72708571428572m-5 0h10M363 90.66022628571429h10" stroke="#182636" fill="none"/>
+<rect x="390" y="102.47219314285715" width="26" height="182.52780685714285" fill="url(#stripe)" stroke="#243343"/>
+<path d="M403 104.38019657142863V100.19395199999997m-5 0h10M398 104.38019657142863h10" stroke="#182636" fill="none"/>
+<text x="509" y="310" text-anchor="middle">UDP loss 10%</text>
+<rect x="478" y="278.23949142857145" width="26" height="6.760508571428545" fill="#d28337" stroke="#243343"/>
+<path d="M491 278.4715165714286V278.0123657142857m-5 0h10M486 278.4715165714286h10" stroke="#182636" fill="none"/>
+<rect x="513" y="277.77691885714285" width="26" height="7.223081142857154" fill="url(#stripe)" stroke="#243343"/>
+<path d="M526 278.10992571428574V277.40306742857143m-5 0h10M521 278.10992571428574h10" stroke="#182636" fill="none"/>
+<text x="632" y="310" text-anchor="middle">UDP loss 30%</text>
+<rect x="601" y="278.1939634285714" width="26" height="6.806036571428592" fill="#d28337" stroke="#243343"/>
+<path d="M614 278.43771428571426V278.06163085714286m-5 0h10M609 278.43771428571426h10" stroke="#182636" fill="none"/>
+<rect x="636" y="276.99276685714284" width="26" height="8.00723314285716" fill="url(#stripe)" stroke="#243343"/>
+<path d="M649 277.18666285714284V276.3353074285714m-5 0h10M644 277.18666285714284h10" stroke="#182636" fill="none"/>
+<text x="755" y="310" text-anchor="middle">UDP loss 45%</text>
+<rect x="724" y="278.00009485714287" width="26" height="6.999905142857131" fill="#d28337" stroke="#243343"/>
+<path d="M737 278.12822742857145V277.93117714285717m-5 0h10M732 278.12822742857145h10" stroke="#182636" fill="none"/>
+<rect x="759" y="274.8401485714286" width="26" height="10.159851428571415" fill="url(#stripe)" stroke="#243343"/>
+<path d="M772 275.4278262857143V274.289088m-5 0h10M767 275.4278262857143h10" stroke="#182636" fill="none"/>
+<text x="878" y="310" text-anchor="middle">Outage</text>
+<rect x="847" y="278.9080731428571" width="26" height="6.09192685714288" fill="#d28337" stroke="#243343"/>
+<path d="M860 278.9980662857143V278.8051611428571m-5 0h10M855 278.9980662857143h10" stroke="#182636" fill="none"/>
+<rect x="882" y="278.9633657142857" width="26" height="6.036634285714285" fill="url(#stripe)" stroke="#243343"/>
+<path d="M895 279.09442285714283V278.827944m-5 0h10M890 279.09442285714283h10" stroke="#182636" fill="none"/>
+<path d="M80 250.71428571428572H970" stroke="#182636" stroke-dasharray="5 4"/><text x="968" y="244.71428571428572" text-anchor="end" stroke="white" stroke-width="4" paint-order="stroke">Stale threshold 500 ms</text>
+<text x="85" y="345">Solid TCP · Striped UDP · Whiskers show 95% bootstrap CIs</text></g></svg>

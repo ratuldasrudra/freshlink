@@ -2,6 +2,7 @@
 
 import asyncio
 import errno
+import logging
 import math
 import socket
 import threading
@@ -20,6 +21,7 @@ THRESHOLD_NS = 500_000_000
 IO_TIMEOUT = 5.0
 STOP_TIMEOUT = 8.0
 SENDER_QUEUE_SIZE = 16
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -48,9 +50,12 @@ def _bind(kind: int) -> socket.socket:
 class LiveTelemetry:
     """Own relay sockets, a shared source, and synchronized receiver metrics."""
 
-    def __init__(self, tcp_profile: Profile = Profile(), udp_profile: Profile = Profile()) -> None:
+    def __init__(self, tcp_profile: Profile = Profile(), udp_profile: Profile = Profile(),
+                 *, stationary: bool = False) -> None:
         self.tcp_profile = tcp_profile
         self.udp_profile = udp_profile
+        self.stationary = stationary
+        self.window_sequence = 0
         self.lock = threading.Lock()
         self.started_ns = time.perf_counter_ns()
         self.metrics = {name: ReceiverMetrics(self.started_ns, THRESHOLD_NS) for name in ("tcp", "udp")}
@@ -152,6 +157,7 @@ class LiveTelemetry:
                 task.cancel()
             done, pending = await asyncio.wait(tasks, timeout=1) if tasks else (set(), set())
             if pending:
+                LOGGER.warning("Retrying telemetry shutdown for %d pending task(s)", len(pending))
                 # Python 3.11 wait_for can consume cancellation when its inner
                 # operation completes at the same instant. Retry cancellation.
                 for task in pending:
@@ -172,7 +178,7 @@ class LiveTelemetry:
         while True:
             now = time.perf_counter_ns()
             elapsed = (now - self.started_ns) / 1_000_000_000
-            x, y = math.cos(elapsed), math.sin(elapsed)
+            x, y = (1.0, 0.0) if self.stationary else (math.cos(elapsed), math.sin(elapsed))
             with self.lock:
                 sample = Sample(self.sequence, now, x, y, "rover")
                 self.truth = (x, y)
@@ -272,20 +278,23 @@ class LiveTelemetry:
                 "threshold_ms": THRESHOLD_NS / 1e6,
                 "settings": self.settings,
                 "counter_window_seconds": (now - self.counters_started_ns) / 1e9,
+                "generated_in_window": (self.sequence - self.window_sequence) % (1 << 32),
                 **{name: {
                     **metrics.snapshot(now, *self.truth),
                     "position": {"x": metrics.latest.x, "y": metrics.latest.y} if metrics.latest else None,
                     "sequence": metrics.latest.sequence if metrics.latest else None,
+                    "sample_generated_ns": metrics.latest.generated_ns if metrics.latest else None,
                     "source_queue_dropped": self.sender_stats[name].dropped,
                     "source_queue_delayed": self.sender_stats[name].delayed,
                     "source_queue_wait_ms": self.sender_stats[name].queue_wait_ms,
                     "relay_released": self.queues[name].released if name in self.queues else 0,
                     "relay_loss": self.queues[name].lost if name in self.queues else 0,
                     "relay_overflow": self.queues[name].overflow if name in self.queues else 0,
+                    "relay_received": self.queues[name].received if name in self.queues else 0,
                 } for name, metrics in self.metrics.items()},
             }
 
-    def control(self, settings: dict) -> None:
+    def control(self, settings: dict, *, reset_counters: bool = True) -> None:
         """Apply validated settings atomically on the relay event loop."""
         from concurrent.futures import Future
 
@@ -321,7 +330,8 @@ class LiveTelemetry:
                 self.queues["tcp"].paused = settings["outage"]
                 with self.lock:
                     self.settings = dict(settings)
-                    self._reset_locked(time.perf_counter_ns())
+                    if reset_counters:
+                        self._reset_locked(time.perf_counter_ns())
                 self.changed["tcp"].set()
                 self.changed["udp"].set()
                 result.set_result(None)
@@ -338,8 +348,9 @@ class LiveTelemetry:
             stats.dropped = stats.delayed = 0
             stats.queue_wait_ms = None
         for queue in self.queues.values():
-            queue.lost = queue.overflow = queue.released = 0
+            queue.lost = queue.overflow = queue.released = queue.received = 0
         self.counters_started_ns = now
+        self.window_sequence = self.sequence
 
     def reset(self) -> None:
         """Reset counters atomically on the telemetry event loop."""

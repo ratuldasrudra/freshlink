@@ -75,3 +75,13 @@ The 24-test Windows suite passed with loopback access, and `node --check web/app
 - Browser verification on Windows showed preset and manual counter resets, the chart and rover labels, disconnected status after stopping the server, and automatic recovery after restarting it on the same port without reloading.
 - The reset unit and integration tests passed in the Windows standard-library suite. A screenshot of the live dashboard was saved to docs/dashboard.jpg. A fresh local clone and new virtual environment passed all 25 tests and opened the dashboard with the README command. The first test invocation accidentally ran in the original working directory; rerunning from the clone corrected that check. Owner review of the polish is pending.
 - The first hosted Python 3.11 jobs hung after three telemetry shutdown timeouts. Timed thread dumps showed the event-loop threads still active. Shutdown now retries cancellation for pending tasks after one second. The full suite passed locally and on both Windows and Ubuntu hosted Python 3.11 jobs after this change. The exact internal asyncio cancellation sequence remains unproven.
+
+## 2026-11-16 · Shutdown regression coverage
+
+The owner requested a hard deadline after the Python 3.11 hang. The shutdown test starts and stops active TCP and UDP traffic in a subprocess, logs each stop, and collects thread dumps before the parent kills a stuck process. Shutdown also logs cancellation retries. The root cause of the original Python 3.11 hang remains unproven.
+
+## 2026-11-16 · Headless experiments
+
+Codex implemented the collector, bootstrap analysis, and figures, and ran the Windows reference study. The owner specified the conditions, minimum repeats, validity checks, and reporting requirements. The full dataset retains every reference run. The separate one-repeat probe was a preflight check and was excluded from the reference analysis by design.
+
+The first analyzer accepted a CSV that omitted whole repeats as long as its remaining repeats were internally complete. It now requires ten full repeats for reference analysis and a single full repeat for quick mode. The output records missing recovery observations explicitly. The quick workflow passed on hosted Windows and Ubuntu, and all declared validity checks passed in the 70-trial Windows reference dataset. A full Ubuntu reference run was not performed.
