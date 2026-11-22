@@ -174,6 +174,20 @@ def plot_metric(summaries: dict, path: Path, metric: str, title: str,
     path.write_text("\n".join(parts) + "\n", encoding="utf-8")
 
 
+def analyze_file(runs: Path, output: Path, *, quick: bool = False) -> None:
+    """Validate trial completeness and write summaries and figures."""
+    output.mkdir(parents=True, exist_ok=True)
+    rows = read_runs(runs)
+    groups = group_runs(rows, expected_repeats=1 if quick else 10)
+    summaries = write_summary(groups, output / "summary.csv")
+    plot_metric(summaries, output / "information-age.svg", "median_age_ms",
+                "Median information age", threshold=float(rows[0]["threshold_ms"]))
+    plot_metric(summaries, output / "delivered-latency.svg", "latency_p95_ms",
+                "95th percentile delivered-update latency")
+    for message, passed in validity(rows, groups):
+        print(f'{"PASS" if passed else "FAIL"} {message}')
+
+
 def main() -> None:
     """Generate the complete summary CSV, validity checks, and age figure."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -181,16 +195,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=Path("results"))
     parser.add_argument("--quick", action="store_true", help="expect a single smoke-test repeat")
     args = parser.parse_args()
-    args.output.mkdir(parents=True, exist_ok=True)
-    rows = read_runs(args.runs)
-    groups = group_runs(rows, expected_repeats=1 if args.quick else 10)
-    summaries = write_summary(groups, args.output / "summary.csv")
-    plot_metric(summaries, args.output / "information-age.svg", "median_age_ms",
-                "Median information age", threshold=float(rows[0]["threshold_ms"]))
-    plot_metric(summaries, args.output / "delivered-latency.svg", "latency_p95_ms",
-                "95th percentile delivered-update latency")
-    for message, passed in validity(rows, groups):
-        print(f'{"PASS" if passed else "FAIL"} {message}')
+    analyze_file(args.runs, args.output, quick=args.quick)
 
 
 if __name__ == "__main__":

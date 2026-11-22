@@ -142,6 +142,9 @@ def main() -> None:
                 writer.writerows(rows)
                 stream.flush()
                 print(f"Repeat {repeat}/{repeats} · {condition}", flush=True)
+    from .analyze import analyze_file
+
+    analyze_file(args.output, args.output.parent / (args.output.stem + "-analysis"), quick=args.quick)
 
 
 if __name__ == "__main__":
