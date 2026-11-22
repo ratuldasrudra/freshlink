@@ -85,3 +85,11 @@ The owner requested a hard deadline after the Python 3.11 hang. The shutdown tes
 Codex implemented the collector, bootstrap analysis, and figures, and ran the Windows reference study. The owner specified the conditions, minimum repeats, validity checks, and reporting requirements. The full dataset retains every reference run. The separate one-repeat probe was a preflight check and was excluded from the reference analysis by design.
 
 The first analyzer accepted a CSV that omitted whole repeats as long as its remaining repeats were internally complete. It now requires ten full repeats for reference analysis and a single full repeat for quick mode. The output records missing recovery observations explicitly. The quick workflow passed on hosted Windows and Ubuntu, and all declared validity checks passed in the 70-trial Windows reference dataset. A full Ubuntu reference run was not performed.
+
+## 2026-11-22 · Final delivery review
+
+- Goal — complete remaining project delivery work and prepare professional GitHub documentation at the owner's request.
+- Tool and model — Codex desktop, GPT-6.1 Terra, PowerShell, and GitHub.
+- Produced — reorganized README with a quick start, architecture, evidence links, and limitations. Updated the demo command in AGENTS.md.
+- Human review — the owner requested completion and professional project documentation. Review of this revision is pending.
+- Verification — reference analysis was rerun against the recorded CSV and all declared checks passed. Additional verification results are reported with the delivery PR. The exact LMS deadline remains unverified.
