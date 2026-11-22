@@ -93,3 +93,4 @@ The first analyzer accepted a CSV that omitted whole repeats as long as its rema
 - Produced — reorganized README with a quick start, architecture, evidence links, and limitations. Updated the demo command in AGENTS.md.
 - Human review — the owner requested completion and professional project documentation. Review of this revision is pending.
 - Verification — reference analysis was rerun against the recorded CSV and all declared checks passed. Additional verification results are reported with the delivery PR. The exact LMS deadline remains unverified.
+- The audit found that the experiment runner needed a separate command for figures. It now calls the analyzer after collecting a complete run. `python -m experiments.run --quick --output tmp/final-quick.csv` generated the CSV, analysis, and figures. `python -m unittest discover -s tests -v` passed 28 tests on Windows. The full 70-trial study was not repeated for this documentation change.

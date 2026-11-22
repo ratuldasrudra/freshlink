@@ -10,8 +10,9 @@ Run from the repository root:
 
 ```text
 python -m experiments.run
-python -m experiments.analyze results/raw/runs.csv --output results/raw/analysis
 ```
+
+The command writes the CSV to `results/raw/runs.csv` and the analysis to `results/raw/runs-analysis/`. To reanalyze an existing CSV separately, use `python -m experiments.analyze results/experiment-runs.csv --output results/raw/analysis`.
 
 Each repeat includes all seven conditions, with shuffled order from seed 1729. Relay seeds are 1730 through 1739 and paired across conditions within a repeat. Every trial uses fresh sockets and counters, a 1.5 s warm-up, and a 6 s observation window. Condition settings are active during warm-up, except the outage trial, which begins healthy. TCP and UDP run simultaneously. The CSV records each trial's actual observed duration, seed, repeat, order, settings, UTC timestamp, Python version and OS.
 

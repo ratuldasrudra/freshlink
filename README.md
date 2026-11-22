@@ -85,10 +85,9 @@ Run the headless experiment suite with Python 3.11 or later:
 
 ```powershell
 python -m experiments.run
-python -m experiments.analyze results/raw/runs.csv --output results/raw/analysis
 ```
 
-The first command runs 70 trials. Use `--quick` with both commands for a short smoke run or `--output` to select a new CSV path for the runner. The analyzer writes summary statistics and two SVG figures. All experiment code uses the standard library. See [the experiment report](docs/REPORT.md) for the conditions and results.
+The command runs 70 trials, then writes summary statistics and two SVG figures beside the raw CSV in a `runs-analysis` directory. Use `--quick` for a short smoke run or `--output` to select a new CSV path. All experiment code uses the standard library. See [the experiment report](docs/REPORT.md) for the conditions and results.
 
 ### Run through the impairment relay
 
